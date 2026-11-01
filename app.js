@@ -213,12 +213,12 @@
 
   // an amount outside the year's months (FanDuel's Dinger Tuesday, 2022): a quiet line at the foot of its year only (user, Nov 1:
   // "a note or something saying ... that there is the FanDuel Dinger Tuesday, but I don't want that to be so like blaring obvious")
-  function outsideNote(y) {
-    const out = y.outside || [];
-    if (!out.length) return "";
-    const total = out.reduce((t, o) => t + cents(o.pl), 0) / 100;
-    const parts = out.map((o) => o.book === "FD" ? `FanDuel's Dinger Tuesday promo, ${money(o.pl)}, tracked on its own until ${mdy(o.d)}` : `an overall P/L adjustment, ${money(o.pl)}`);
-    return `<div class="fine">ⓘ ${y.y} includes ${money(total)} that isn't in any one month: ${parts.join(", and ")}.</div>`;
+  function outsideNote(y) {  // (Nov 1: "say that I was tracking it separately and then decided to just add it all into the overall")
+    const dinger = (y.outside || []).filter((o) => o.book === "FD");
+    if (!dinger.length) return "";
+    const o = dinger[0];
+    return `<div class="fine"><b>About ${y.y}'s total:</b> FanDuel's Dinger Tuesday promo (${money(o.pl)}) was tracked separately at first.
+      On ${mdy(o.d)} we added all of it to the overall P/L, so it counts in ${y.y}'s total but isn't part of any one month.</div>`;
   }
   function viewYear(r) {
     const y = yearOf(r.y), ms = D.months.filter((m) => m.m.startsWith(`${r.y}-`));
