@@ -195,6 +195,7 @@
     el.className = "climb";
     el.dataset.chart = "1";
     const pts = D.months.map((m) => ({ m: m.m, pl: m.pl, od: m.od }));
+    el._focus = null;  // the page's place ({y, m}): its year shaded, its month marked
     el._draw = () => {
       const W = Math.max(300, el.clientWidth - 44 || 1000), narrow = W < 640, H = narrow ? 270 : 460;  // (big, like his old chart)
       const pad = { l: narrow ? 46 : 62, r: narrow ? 14 : 24, t: 20, b: 40 };
@@ -236,13 +237,24 @@
         lastLabel = X(i);
         svg += `<text x="${X(i)}" y="${H - 12}" text-anchor="${i === 0 ? "start" : "middle"}" class="yr">${p.m.slice(0, 4)}</text>`;
       });
-      svg += `<path d="${area}" fill="url(#clFill)"/><path class="cl-line" d="${line}" fill="none" stroke="#22c55e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" filter="url(#clGlow)"/>
-        <circle cx="${xs[n - 1]}" cy="${ys[n - 1]}" r="4.5" fill="#4ade80" class="cl-end"/>
+      const f = el._focus || {}, fy = f.y && !f.m ? pts.map((p, i) => (p.m.startsWith(`${f.y}-`) ? i : -1)).filter((i) => i >= 0) : [];
+      if (fy.length) {  // a year open below: its stretch of the line shaded
+        const x0 = fy[0] === 0 ? pad.l : (X(fy[0] - 1) + X(fy[0])) / 2, x1 = fy[fy.length - 1] === n - 1 ? W - pad.r : (X(fy[fy.length - 1]) + X(fy[fy.length - 1] + 1)) / 2;
+        svg += `<rect x="${x0}" y="${pad.t}" width="${x1 - x0}" height="${ih}" fill="rgba(34,197,94,.07)" rx="6"/>`;
+      }
+      svg += `<path d="${area}" fill="url(#clFill)"/><path class="cl-line${el._drawn ? "" : " anim"}" d="${line}" fill="none" stroke="#22c55e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" filter="url(#clGlow)"/>
+        <circle cx="${xs[n - 1]}" cy="${ys[n - 1]}" r="4.5" fill="#4ade80" class="cl-end"/>`;
+      const fm = f.m ? pts.findIndex((p) => p.m === f.m) : -1;
+      if (fm >= 0) {  // a month open below: marked on the line
+        svg += `<line x1="${xs[fm]}" x2="${xs[fm]}" y1="${pad.t}" y2="${pad.t + ih}" stroke="rgba(74,222,128,.45)" stroke-dasharray="4 4"/>
+          <circle cx="${xs[fm]}" cy="${ys[fm]}" r="7" fill="#22c55e" stroke="#0b1322" stroke-width="3"/>`;
+      }
+      svg += `
         <line class="cl-guide" x1="0" x2="0" y1="${pad.t}" y2="${pad.t + ih}" stroke="rgba(226,232,240,.5)" stroke-width="1" visibility="hidden"/>
         <circle class="cl-dot" r="6" fill="#0b1322" stroke="#4ade80" stroke-width="3" visibility="hidden"/>
         <rect class="cl-hit" x="${pad.l - 8}" y="0" width="${iw + 16}" height="${H}" fill="transparent"/></svg>`;
-      el.innerHTML = `<div class="cl-head"><div><h3>All-time P/L, month by month</h3><div class="s">since ${mdy(D.since)} · hover a month · click to open it</div></div>
-        <div class="cl-now"><span>Now</span><b class="${tone(D.overall)}">${money(D.overall)}</b></div></div>
+      el._drawn = true;
+      el.innerHTML = `<div class="cl-head"><div><h3>All-time P/L, month by month</h3><div class="s">since ${mdy(D.since)} · hover a month · click to open it</div></div></div>
         <div class="cl-plot">${svg}<button type="button" class="cl-tip" hidden></button></div>`;
       const plot = el.querySelector(".cl-plot"), tip = el.querySelector(".cl-tip"), guide = el.querySelector(".cl-guide"), dot = el.querySelector(".cl-dot");
       const at = (e) => { const r = plot.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) - pad.l) / (iw / Math.max(1, n - 1))))); };
@@ -305,7 +317,7 @@
           const span = (D.books[r[0]] || {}).span || [];
           return `<div class="yrs">${ys.map(([y, v]) => `<span>${y} ${M(v)}</span>`).join("")}${r[2] ? `<span class="muted">${r[3]} won · ${r[4]} lost</span>` : ""}${span[0] ? `<span class="muted">${mdy(span[0])} – ${mdy(span[1])}</span>` : ""}</div>`;
         } })}</details>`;
-    return { html, charts: { climb: climbChart() }, pre: '<div data-chart-slot="climb"></div>' };
+    return { html, charts: {} };
   }
 
   // an amount outside the year's months (FanDuel's Dinger Tuesday, 2022): a quiet line at the foot of its year only (user, Nov 1:
@@ -452,17 +464,27 @@
   }
 
   // ---------------------------------------------------------------- render + events
-  let lastLevelKey = null;
+  let lastLevelKey = null, climbEl = null;
+  const climbSlot = document.createElement("div");
+  climbSlot.id = "climb-slot";
+  app.parentNode.insertBefore(climbSlot, app);
   function render() {
     if (!D) return;
     const r = route();
     const v = r.level === "all" ? viewAll() : r.level === "year" ? viewYear(r) : r.level === "month" ? viewMonth(r) : viewDay(r);
-    app.innerHTML = `${v.pre || ""}${header(r)}<div class="fade">${v.html}</div><div class="foot">Boost World · every number as posted in our Discord · past results don't guarantee future results</div>`;
+    // the climb stays above every view (user, Nov 1: "I want the chart to stay above ... Don't minimize the graph when they click
+    // on a month"): made once, its focus redrawn
+    if (!climbEl) { climbEl = climbChart(); climbSlot.appendChild(climbEl); }
+    climbEl._focus = { y: r.y, m: r.m };
+    climbEl._draw();
+    app.innerHTML = `${header(r)}<div class="fade">${v.html}</div>`;  // (no footer line: user, Nov 1, "we can just remove all that info there")
     mountCharts(v.charts);
     attachTip(app);
     const key = `${r.level}:${r.y}:${r.m}:${r.d}`;
     if (lastLevelKey !== null && key !== lastLevelKey) {
-      if (embedded) parent.postMessage({ type: "boostworld-pl-top" }, "*");
+      // to the view under the chart ("take them down to ... the calendar ... but actually leave the graph still above"): the frame
+      // gets how far down this page it starts (offset); boostworld.us scrolls to it
+      if (embedded) parent.postMessage({ type: "boostworld-pl-top", offset: Math.round(app.getBoundingClientRect().top + window.scrollY) }, "*");
       else app.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     lastLevelKey = key;
@@ -496,7 +518,7 @@
   });
   window.addEventListener("hashchange", render);
   let rz = null;
-  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { app.querySelectorAll("[data-chart]").forEach((c) => c._draw()); sendHeight(); }, 120); });
+  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { app.querySelectorAll("[data-chart]").forEach((c) => c._draw()); if (climbEl) climbEl._draw(); sendHeight(); }, 120); });
 
   // the frame's height follows the page (Base44 listens for "boostworld-pl-height")
   let lastH = 0;

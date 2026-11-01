@@ -250,7 +250,7 @@
   .cl-plot svg { display: block; overflow: visible; }
   .cl-plot svg text { font-family: var(--font); font-size: 12px; fill: var(--faint); }
   .cl-plot svg text.yr { font-size: 13px; font-weight: 600; fill: var(--muted); }
-  .cl-plot .cl-line { stroke-dasharray: 6000; stroke-dashoffset: 6000; animation: clDraw 1.4s var(--ease) .15s forwards; }
+  .cl-plot .cl-line.anim { stroke-dasharray: 6000; stroke-dashoffset: 6000; animation: clDraw 1.4s var(--ease) .15s forwards; }
   @keyframes clDraw { to { stroke-dashoffset: 0; } }
   .cl-tip { position: absolute; min-width: 190px; padding: 12px 14px; border-radius: 14px; background: rgba(11, 19, 34, .96); text-align: left;
     border: 1px solid var(--line-2); box-shadow: 0 16px 40px rgba(0, 0, 0, .55); pointer-events: none; }
