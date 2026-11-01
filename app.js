@@ -262,8 +262,9 @@
         const p = pts[i];
         guide.setAttribute("x1", xs[i]); guide.setAttribute("x2", xs[i]); guide.setAttribute("visibility", "visible");
         dot.setAttribute("cx", xs[i]); dot.setAttribute("cy", ys[i]); dot.setAttribute("visibility", "visible");
-        tip.innerHTML = `<div class="t">${esc(monthName(p.m))}</div><div class="r"><span>Month P/L</span><b class="${tone(p.pl)}">${money(p.pl)}</b></div>
-          <div class="r"><span>All-time</span><b class="${tone(p.od)}">${money(p.od)}</b></div><div class="go">Open ${esc(MONTHS[+p.m.slice(5) - 1])} ›</div>`;
+        // (his old chart's way: "May 2024 P/L" and its number, then All-Time; user, Nov 1: "you don't need May 2024 to then month PL")
+        tip.innerHTML = `<div class="t">${esc(`${MONTHS[+p.m.slice(5) - 1].slice(0, 3)} ${p.m.slice(0, 4)}`)} P/L</div><b class="v ${tone(p.pl)}">${money(p.pl)}</b>
+          <div class="t sep">All-Time</div><b class="v sm ${tone(p.od)}">${money(p.od)}</b>`;
         tip.dataset.go = href(p.m.slice(0, 4), p.m);
         tip.hidden = false;
         const tw = tip.offsetWidth, want = xs[i] + 16 + tw > W ? xs[i] - 16 - tw : xs[i] + 16;
