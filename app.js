@@ -185,6 +185,90 @@
     };
     return el;
   }
+  // The climb (user, Nov 1: "one graph the whole way through, that you can hover over each month and see the monthly total, as
+  // well as the all-time total at that given time"; it loads first, right under boostworld.us's All-Time Total; "click on ...
+  // a certain month ... and then be taken to that month"): the overall P/L at each month's end as one smooth line over a soft
+  // fill, a marker where each year starts, a readout that follows the pointer (mouse or finger), a click (or a tap on the
+  // readout) opens that month.
+  function climbChart() {
+    const el = document.createElement("div");
+    el.className = "climb";
+    el.dataset.chart = "1";
+    const pts = D.months.map((m) => ({ m: m.m, pl: m.pl, od: m.od }));
+    el._draw = () => {
+      const W = Math.max(300, el.clientWidth - 44 || 1000), narrow = W < 640, H = narrow ? 270 : 460;  // (big, like his old chart)
+      const pad = { l: narrow ? 46 : 62, r: narrow ? 14 : 24, t: 20, b: 40 };
+      const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b, n = pts.length;
+      const hi = Math.max(1, ...pts.map((p) => p.od)), lo = Math.min(0, ...pts.map((p) => p.od));
+      const raw = (hi - lo) / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const step = [1, 2, 2.5, 4, 5, 10].map((k) => k * mag).find((k) => k >= raw) || 10 * mag;  // ($40k steps: 0 to $160k)
+      const top = Math.ceil(hi / step) * step, bot = Math.floor(lo / step) * step;
+      const X = (i) => pad.l + (n === 1 ? iw / 2 : (i / (n - 1)) * iw), Y = (v) => pad.t + ih * (1 - (v - bot) / (top - bot || 1));
+      const k = (v) => (Math.abs(v) >= 1000 ? `$${Math.round(v / 1000)}k` : `$${Math.round(v)}`);
+      // a smooth line that never bends past a point (monotone cubic)
+      const xs = pts.map((_, i) => X(i)), ys = pts.map((p) => Y(p.od));
+      const d = xs.slice(1).map((x, i) => (ys[i + 1] - ys[i]) / (x - xs[i]));
+      const m = xs.map((_, i) => (i === 0 ? d[0] : i === n - 1 ? d[n - 2] : d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2) || 0);
+      for (let i = 0; i < n - 1; i++) {
+        if (!d[i]) { m[i] = m[i + 1] = 0; continue; }
+        const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+        if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+      }
+      let line = `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
+      for (let i = 0; i < n - 1; i++) {
+        const dx = (xs[i + 1] - xs[i]) / 3;
+        line += `C${(xs[i] + dx).toFixed(1)},${(ys[i] + m[i] * dx).toFixed(1)} ${(xs[i + 1] - dx).toFixed(1)},${(ys[i + 1] - m[i + 1] * dx).toFixed(1)} ${xs[i + 1].toFixed(1)},${ys[i + 1].toFixed(1)}`;
+      }
+      const base = Y(Math.max(bot, 0)).toFixed(1);
+      const area = `${line}L${xs[n - 1].toFixed(1)},${base}L${xs[0].toFixed(1)},${base}Z`;
+      let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Overall P/L at the end of every month since ${mdy(D.since)}">
+        <defs><linearGradient id="clFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22c55e" stop-opacity=".32"/><stop offset=".7" stop-color="#22c55e" stop-opacity=".06"/><stop offset="1" stop-color="#22c55e" stop-opacity="0"/></linearGradient>
+        <filter id="clGlow" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+      for (let v = bot; v <= top + 1e-6; v += step) {
+        svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(148,163,184,${v === 0 ? .28 : .1})" ${v === 0 ? "" : 'stroke-dasharray="3 6"'}/>
+          <text x="${pad.l - 12}" y="${Y(v) + 4}" text-anchor="end">${k(v)}</text>`;
+      }
+      let lastLabel = -1e9;
+      pts.forEach((p, i) => {  // each year where it starts: a quiet marker, and its name under the axis (never two on top of each other)
+        if (!p.m.endsWith("-01") && i !== 0) return;
+        if (i !== 0) svg += `<line x1="${X(i)}" x2="${X(i)}" y1="${pad.t}" y2="${pad.t + ih}" stroke="rgba(148,163,184,.14)"/>`;
+        if (X(i) - lastLabel < 62) return;
+        lastLabel = X(i);
+        svg += `<text x="${X(i)}" y="${H - 12}" text-anchor="${i === 0 ? "start" : "middle"}" class="yr">${p.m.slice(0, 4)}</text>`;
+      });
+      svg += `<path d="${area}" fill="url(#clFill)"/><path class="cl-line" d="${line}" fill="none" stroke="#22c55e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" filter="url(#clGlow)"/>
+        <circle cx="${xs[n - 1]}" cy="${ys[n - 1]}" r="4.5" fill="#4ade80" class="cl-end"/>
+        <line class="cl-guide" x1="0" x2="0" y1="${pad.t}" y2="${pad.t + ih}" stroke="rgba(226,232,240,.5)" stroke-width="1" visibility="hidden"/>
+        <circle class="cl-dot" r="6" fill="#0b1322" stroke="#4ade80" stroke-width="3" visibility="hidden"/>
+        <rect class="cl-hit" x="${pad.l - 8}" y="0" width="${iw + 16}" height="${H}" fill="transparent"/></svg>`;
+      el.innerHTML = `<div class="cl-head"><div><h3>All-time P/L, month by month</h3><div class="s">since ${mdy(D.since)} · hover a month · click to open it</div></div>
+        <div class="cl-now"><span>Now</span><b class="${tone(D.overall)}">${money(D.overall)}</b></div></div>
+        <div class="cl-plot">${svg}<button type="button" class="cl-tip" hidden></button></div>`;
+      const plot = el.querySelector(".cl-plot"), tip = el.querySelector(".cl-tip"), guide = el.querySelector(".cl-guide"), dot = el.querySelector(".cl-dot");
+      const at = (e) => { const r = plot.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) - pad.l) / (iw / Math.max(1, n - 1))))); };
+      const show = (i) => {
+        const p = pts[i];
+        guide.setAttribute("x1", xs[i]); guide.setAttribute("x2", xs[i]); guide.setAttribute("visibility", "visible");
+        dot.setAttribute("cx", xs[i]); dot.setAttribute("cy", ys[i]); dot.setAttribute("visibility", "visible");
+        tip.innerHTML = `<div class="t">${esc(monthName(p.m))}</div><div class="r"><span>Month P/L</span><b class="${tone(p.pl)}">${money(p.pl)}</b></div>
+          <div class="r"><span>All-time</span><b class="${tone(p.od)}">${money(p.od)}</b></div><div class="go">Open ${esc(MONTHS[+p.m.slice(5) - 1])} ›</div>`;
+        tip.dataset.go = href(p.m.slice(0, 4), p.m);
+        tip.hidden = false;
+        const tw = tip.offsetWidth, want = xs[i] + 16 + tw > W ? xs[i] - 16 - tw : xs[i] + 16;
+        const left = Math.max(0, Math.min(W - tw, want));  // (never past the chart's edges: a phone had cut it off)
+        tip.style.left = `${left}px`; tip.style.top = `${Math.max(4, Math.min(H - tip.offsetHeight - 4, ys[i] - tip.offsetHeight / 2))}px`;
+      };
+      const hide = () => { tip.hidden = true; guide.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
+      const hit = el.querySelector(".cl-hit");
+      hit.addEventListener("pointermove", (e) => show(at(e)));
+      hit.addEventListener("pointerdown", (e) => show(at(e)));
+      hit.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") hide(); });
+      // a click on the line opens that month (a finger's tap shows the readout first; a tap on it opens the month)
+      hit.addEventListener("click", (e) => { const p = pts[at(e)]; if (p && e.pointerType !== "touch") go(href(p.m.slice(0, 4), p.m)); });
+      hit.style.cursor = "pointer";
+    };
+    return el;
+  }
   function mountCharts(nodes) {
     app.querySelectorAll("[data-chart-slot]").forEach((slot) => { const c = nodes[slot.dataset.chartSlot]; if (c) { slot.replaceWith(c); c._draw(); } });
   }
@@ -221,8 +305,7 @@
           const span = (D.books[r[0]] || {}).span || [];
           return `<div class="yrs">${ys.map(([y, v]) => `<span>${y} ${M(v)}</span>`).join("")}${r[2] ? `<span class="muted">${r[3]} won · ${r[4]} lost</span>` : ""}${span[0] ? `<span class="muted">${mdy(span[0])} – ${mdy(span[1])}</span>` : ""}</div>`;
         } })}</details>`;
-    // (no every-month chart here: boostworld.us shows its own climb right above this page; user, Nov 1)
-    return { html, charts: {} };
+    return { html, charts: { climb: climbChart() }, pre: '<div data-chart-slot="climb"></div>' };
   }
 
   // an amount outside the year's months (FanDuel's Dinger Tuesday, 2022): a quiet line at the foot of its year only (user, Nov 1:
@@ -374,7 +457,7 @@
     if (!D) return;
     const r = route();
     const v = r.level === "all" ? viewAll() : r.level === "year" ? viewYear(r) : r.level === "month" ? viewMonth(r) : viewDay(r);
-    app.innerHTML = `${header(r)}<div class="fade">${v.html}</div><div class="foot">Boost World · every number as posted in our Discord · past results don't guarantee future results</div>`;
+    app.innerHTML = `${v.pre || ""}${header(r)}<div class="fade">${v.html}</div><div class="foot">Boost World · every number as posted in our Discord · past results don't guarantee future results</div>`;
     mountCharts(v.charts);
     attachTip(app);
     const key = `${r.level}:${r.y}:${r.m}:${r.d}`;
