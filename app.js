@@ -233,13 +233,13 @@
         svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(148,163,184,${v === 0 ? .28 : .1})" ${v === 0 ? "" : 'stroke-dasharray="3 6"'}/>
           <text x="${pad.l - 12}" y="${Y(v) + 4}" text-anchor="end">${k(v)}</text>`;
       }
-      let lastLabel = -1e9;
-      pts.forEach((p, i) => {  // each year where it starts: a quiet marker, and its name under the axis (never two on top of each other)
-        if (!p.m.endsWith("-01") && i !== 0) return;
+      // each year where it starts: a quiet marker, and its name under the axis; the first one (the start, Feb 2022) only when
+      // there's room before the next (a phone had lost "2023" to it)
+      const starts = pts.map((p, i) => (p.m.endsWith("-01") || i === 0 ? i : -1)).filter((i) => i >= 0);
+      starts.forEach((i, k) => {
         if (i !== 0) svg += `<line x1="${X(i)}" x2="${X(i)}" y1="${pad.t}" y2="${pad.t + ih}" stroke="rgba(148,163,184,.14)"/>`;
-        if (X(i) - lastLabel < 62) return;
-        lastLabel = X(i);
-        svg += `<text x="${X(i)}" y="${H - 12}" text-anchor="${i === 0 ? "start" : "middle"}" class="yr">${p.m.slice(0, 4)}</text>`;
+        if (i === 0 && starts[k + 1] !== undefined && X(starts[k + 1]) - X(0) < 60) return;
+        svg += `<text x="${X(i)}" y="${H - 12}" text-anchor="${i === 0 ? "start" : "middle"}" class="yr">${pts[i].m.slice(0, 4)}</text>`;
       });
       const f = el._focus || {}, fy = f.y && !f.m ? pts.map((p, i) => (p.m.startsWith(`${f.y}-`) ? i : -1)).filter((i) => i >= 0) : [];
       if (fy.length) {  // a year open below: its stretch of the line shaded
@@ -258,7 +258,7 @@
         <circle class="cl-dot" r="6" fill="#0b1322" stroke="#4ade80" stroke-width="3" visibility="hidden"/>
         <rect class="cl-hit" x="${pad.l - 8}" y="0" width="${iw + 16}" height="${H}" fill="transparent"/></svg>`;
       el._drawn = true;
-      el.innerHTML = `<div class="cl-head"><div><h3>All-time P/L, month by month</h3><div class="s">since ${mdy(D.since)} · hover a month · click to open it</div></div></div>
+      el.innerHTML = `<div class="cl-head"><div><h3>All-time P/L, month by month</h3><div class="s">since ${mdy(D.since)} · ${matchMedia("(hover: none)").matches ? "hold to see a month · tap to open it" : "hover a month · click to open it"}</div></div></div>
         <div class="cl-plot">${svg}<button type="button" class="cl-tip" hidden></button></div>`;
       const plot = el.querySelector(".cl-plot"), tip = el.querySelector(".cl-tip"), guide = el.querySelector(".cl-guide"), dot = el.querySelector(".cl-dot");
       const at = (e) => { const r = plot.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.round(((e.clientX - r.left) - pad.l) / (iw / Math.max(1, n - 1))))); };
@@ -277,11 +277,34 @@
       };
       const hide = () => { tip.hidden = true; guide.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
       const hit = el.querySelector(".cl-hit");
-      hit.addEventListener("pointermove", (e) => show(at(e)));
-      hit.addEventListener("pointerdown", (e) => show(at(e)));
+      // a finger: the readout only while it's on the chart, sliding along the months; lifted, it's gone; a quick tap opens the
+      // month (user, Nov 1: "only if they're pushing and holding on the graph"; it had stayed up after the finger left)
+      let touch = null, touchEnded = 0;
+      hit.addEventListener("pointerdown", (e) => {
+        if (e.pointerType === "touch") touch = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false };
+        show(at(e));
+      });
+      hit.addEventListener("pointermove", (e) => {
+        if (e.pointerType === "touch") {
+          if (!touch) return;
+          if (Math.abs(e.clientX - touch.x) > 8 || Math.abs(e.clientY - touch.y) > 8) touch.moved = true;
+        }
+        show(at(e));
+      });
+      const lift = (e) => {
+        if (e.pointerType !== "touch") return;
+        const tap = e.type === "pointerup" && touch && !touch.moved && Date.now() - touch.t < 300;
+        touch = null; touchEnded = Date.now(); hide();
+        if (tap) { const p = pts[at(e)]; if (p) go(href(p.m.slice(0, 4), p.m)); }
+      };
+      hit.addEventListener("pointerup", lift);
+      hit.addEventListener("pointercancel", lift);
       hit.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") hide(); });
-      // a click on the line opens that month (a finger's tap shows the readout first; a tap on it opens the month)
-      hit.addEventListener("click", (e) => { const p = pts[at(e)]; if (p && e.pointerType !== "touch") go(href(p.m.slice(0, 4), p.m)); });
+      // a mouse's click on the line opens that month (a finger's is the tap above)
+      hit.addEventListener("click", (e) => {
+        if (e.pointerType === "touch" || Date.now() - touchEnded < 700) return;
+        const p = pts[at(e)]; if (p) go(href(p.m.slice(0, 4), p.m));
+      });
       hit.style.cursor = "pointer";
     };
     return el;
