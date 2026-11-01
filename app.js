@@ -127,7 +127,8 @@
     // flat (all time): one list, the winners, N/A, then the losers best to worst, no group headers (user, Nov 1: "don't
     // categorize them as up all time, down all time ... doesn't draw so much attention to the red ones")
     if (opts.flat) {
-      const order = [...ups, ...na, ...evens, ...downs.slice().reverse()];
+      // every row by its amount, N/A among them (user, Nov 1: "fit the NA book ... where it actually would be ... sorted in profit total")
+      const order = [...ups, ...na, ...evens, ...downs].sort((x, y) => y[1] - x[1]);
       return `<table class="books${opts.second ? " two" : ""}"><thead><tr><th class="c-name">Book</th><th class="wide-only c-bar"></th><th class="r c-amt">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r c-two">${esc(opts.second.head)}</th>` : ""}<th class="r c-bets">Bets</th></tr></thead>
         <tbody>${order.map((r) => line(r, r[0] === "N/A" || r[0] === "NB" ? "na" : "")).join("")}
         <tr class="total"><td>Total</td><td class="wide-only"></td><td class="r amt ${tone(total)}">${money(total)}</td>${opts.second ? `<td class="r sec">${opts.second.total || ""}</td>` : ""}<td class="r sec">${bets.toLocaleString("en-US")}</td></tr></tbody></table>`;
