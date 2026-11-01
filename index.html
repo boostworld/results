@@ -93,7 +93,9 @@
   /* cards (years, months) */
   .cards { display: grid; gap: 14px; }
   .cards.years { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); }
-  @media (min-width: 1000px) { .cards.years { grid-template-columns: repeat(5, minmax(0, 1fr)); } }  /* every year in one row */
+  @media (min-width: 1100px) { .cards.years { grid-template-columns: repeat(5, minmax(0, 1fr)); } }  /* every year in one row */
+  .cards.years .cb { font-size: 12.5px; padding: 8px 9px; }
+  .cb .row { min-width: 0; }
   .cards.months { grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
   .card { position: relative; display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 16px 16px 14px;
     border-radius: var(--r-lg); border: 1px solid var(--line); background: linear-gradient(180deg, rgba(34, 197, 94, .1), rgba(14, 22, 38, .2) 46%), var(--panel);
@@ -106,6 +108,7 @@
   .cb .row { display: flex; justify-content: space-between; gap: 8px; }
   .cb .row + .row { margin-top: 3px; }
   .cb .row b { font-weight: 700; }
+  .cb .row span, .cb .row b { white-space: nowrap; }
   .cb .note { text-align: right; font-size: 11px; color: var(--muted); }
   .card .meta { font-size: 12.5px; color: var(--muted); }
   .bars { position: relative; height: 54px; display: flex; gap: 3px; align-items: stretch; margin-top: auto; }
@@ -412,7 +415,7 @@
       <li><b>N/A</b> is an amount not tied to one sportsbook: a correction posted in Discord, or a day logged only as its total.</li>
       ${out.length ? `<li>${out.map((o) => `${o.what} ${money(o.pl)} (${mdy(o.d)})`).join(" and ")} ${out.length === 1 ? "is" : "are"} part of the overall but outside any month, as posted in Discord.</li>` : ""}
       <li><b>Units:</b> 1 unit = $${D.unit}. ${money(D.overall)} is ${D.units.toLocaleString("en-US", { maximumFractionDigits: 1 })} units.</li>
-      <li>This page is updated ${D.every === "week" ? "every week" : "at the start of every month"}; the newest days are in Discord first.</li>
+      <li>This page is updated ${D.every === "day" ? "every day" : D.every === "week" ? "every week" : "at the start of every month"}; the newest days are in Discord first.</li>
     </ul></div></details>`;
   }
 
