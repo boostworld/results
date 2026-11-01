@@ -341,6 +341,7 @@
       <div class="ycards">${cards}</div>${openYear ? yearPanel(yearOf(openYear)) : ""}
       <details class="panel drop"><summary><div><h3>Every sportsbook · all time</h3><div class="s">${D.all_books.filter((b) => b[0] !== "N/A").length} books · click to open</div></div>${CHEV}</summary>
         ${booksTable(D.all_books, { head: "All time", flat: true, more: (r) => {
+          if (r[0] === "N/A") return naLedger();
           const ys = D.years.map((y) => [y.y, (y.books.find((b) => b[0] === r[0]) || [])[1]]).filter((x) => x[1] !== undefined);
           const span = (D.books[r[0]] || {}).span || [];
           return `<div class="yrs">${ys.map(([y, v]) => `<span>${y} ${M(v)}</span>`).join("")}${r[2] ? `<span class="muted">${r[3]} won · ${r[4]} lost</span>` : ""}${span[0] ? `<span class="muted">${mdy(span[0])} – ${mdy(span[1])}</span>` : ""}</div>`;
@@ -348,6 +349,11 @@
     return { html, charts: {} };
   }
 
+  // N/A in one calm line (user, Nov 1: "very transparent ... but I also don't want it to look like I made too many errors ... as
+  // much as we can do to be vague about the NA"); its pieces stay in the log on his PC
+  function naLedger() {
+    return `<div class="naled"><p>Amounts recorded as a day's or month's total rather than to one sportsbook. They're included in every total.</p></div>`;
+  }
   // an amount outside the year's months (FanDuel's Dinger Tuesday, 2022): a quiet line at the foot of its year only (user, Nov 1:
   // "a note or something saying ... that there is the FanDuel Dinger Tuesday, but I don't want that to be so like blaring obvious")
   function outsideNote(y) {  // (Nov 1: "say that I was tracking it separately and then decided to just add it all into the overall")
@@ -429,7 +435,7 @@
           <div class="kv small"><div class="k">Overall through ${mdy(last)}</div><div class="v ${tone(overallThen)}">${money(overallThen)}</div></div>
           <div class="split">Cash <b class="${tone(m.cash)}">${money(m.cash)}</b><br><span class="bonus">Bonus bets won <b>${money(m.bonus)}</b></span> <span class="muted">worth ${money(m.worth, { plain: true })} at ${esc(rateText(m.rates).replace(" value", ""))}</span></div></div></div>
       <div class="cal">${cal}</div>
-      ${cents(adjTotal) ? `<div class="dnote">“adj.” under a day: ${money(adjTotal)} of the month post that isn't in one day's own number (a later correction), placed on the day it came from so the days add up to the month.</div>` : ""}
+      ${cents(adjTotal) ? `<div class="dnote">“adj.” is a month adjustment, counted on that day.</div>` : ""}
       <div class="panel"><div class="ph"><div><h3>Day by day · ${esc(monthName(r.m))}</h3><div class="s">click a day to open it</div></div></div><div data-chart-slot="days"></div></div>
       <div class="panel"><div class="ph"><div><h3>Sportsbooks · ${esc(monthName(r.m))}</h3><div class="s">the right column is each book's ${r.y}</div></div></div>
         ${booksTable(m.books, { head: MONTHS[+r.m.slice(5) - 1], second: { head: String(r.y), of: (c) => yb[c] !== undefined ? M(yb[c]) : "", total: M(y.pl) }, upLabel: "Up this month", downLabel: "Down this month" })}
@@ -467,7 +473,9 @@
       ${day.lines && day.lines.length ? `<div class="lines">${lines}</div>` : `<div class="dnote">This day is its posted total; its bets weren't listed one by one.</div>`}
       <div class="result ${tone(pl)}">= ${cents(pl) >= 0 ? "Won" : "Lost"} ${money(Math.abs(pl), { plain: true, trim: true })}${day.lines && day.lines.length ? paren : ""}</div>
       <div class="eyebrow" style="margin-bottom:8px">Each book today</div><div class="tiles">${tiles}</div>
-      ${cents(row[2]) ? `<div class="dnote">adj. ${money(row[2])}: part of the month post placed on this day (a later correction), outside the day's own number.</div>` : ""}
+      ${(() => { const notes = [];
+        if (cents(row[2])) notes.push(`Month adjustment ${money(row[2])}, counted in the month's total.`);
+        return notes.length ? `<div class="dnote">${notes.join("<br>")}</div>` : ""; })()}
       <div class="boxes"><div class="box${day.md < 0 ? " neg" : ""}"><div class="k">${MONTHS[+day.d.slice(5, 7) - 1]} P/L</div><div class="v ${tone(day.md)}">${money(day.md)}</div></div>
         <div class="box${day.od < 0 ? " neg" : ""}"><div class="k">Overall P/L since ${mdy(D.since)}</div><div class="v ${tone(day.od)}">${money(day.od)}</div></div></div>
       <div class="dc-foot">Bonus bets counted at ${pct(day.rate)} of their value</div></div>`;
