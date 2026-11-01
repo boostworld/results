@@ -93,6 +93,7 @@
   /* cards (years, months) */
   .cards { display: grid; gap: 14px; }
   .cards.years { grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); }
+  @media (min-width: 1000px) { .cards.years { grid-template-columns: repeat(5, minmax(0, 1fr)); } }  /* every year in one row */
   .cards.months { grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
   .card { position: relative; display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 16px 16px 14px;
     border-radius: var(--r-lg); border: 1px solid var(--line); background: linear-gradient(180deg, rgba(34, 197, 94, .1), rgba(14, 22, 38, .2) 46%), var(--panel);
@@ -364,7 +365,7 @@
   }
   function cashBonus(o, rates) {
     return `<div class="cb"><div class="row"><span>Cash</span><b class="${tone(o.cash)}">${money(o.cash)}</b></div>
-      <div class="row"><span>Bonus bets won</span><b class="bonus">${money(o.bonus)}</b></div>
+      <div class="row"><span>Bonus bets</span><b class="bonus">${money(o.bonus)}</b></div>
       <div class="note">counted at ${esc(rateText(rates))}</div></div>`;
   }
   function miniBars(values) {  // a card's months: wins up, losses down from one $0 line
@@ -485,14 +486,6 @@
     const bestM = monthOf(s.best_month);
     const html = `<div class="hero"><div><div class="k">All time · since ${mdy(D.since)}</div><div class="big ${tone(D.overall)}">${money(D.overall)}</div>
         <div class="sub">${yearsSpan} · click a year to open it</div></div></div>
-      <div class="stats">
-        <div class="stat"><div class="v up">${s.winning_months} of ${s.months}</div><div class="k">winning months · <b>${Math.round(100 * s.winning_months / s.months)}%</b></div></div>
-        <div class="stat"><div class="v up">${money(s.avg_month, { whole: true })}</div><div class="k">average month</div></div>
-        <div class="stat"><div class="v up">${money(s.best_month_pl, { whole: true })}</div><div class="k">best month · <b>${esc(monthName(s.best_month))}</b></div></div>
-        <div class="stat"><div class="v">${s.longest_streak}</div><div class="k">winning months in a row</div></div>
-        <div class="stat"><div class="v">${s.bets.toLocaleString("en-US")}</div><div class="k">bets tracked · <b>${s.books}</b> sportsbooks</div></div>
-        <div class="stat"><div class="v up">+${D.units.toLocaleString("en-US", { maximumFractionDigits: 0 })}</div><div class="k">units · 1 unit = $${D.unit}</div></div>
-      </div>
       <div class="cards years">${cards}</div>
       <div class="panel"><div class="ph"><div><h3>Every month since ${mdy(D.since)}</h3><div class="s">click a month to open it</div></div></div>
         <div data-chart-slot="months"></div>
