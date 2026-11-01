@@ -190,17 +190,31 @@
   }
 
   // ---------------------------------------------------------------- views
+  // a year opened on All time: its months under the cards, two columns, each a bar by its size (user, Nov 1, of the section
+  // boostworld.us had built itself: "I do like how this part displays here"); a month opens its own page, and the year's
+  // whole page (calendars, sportsbooks) is one click more
+  let openYear = null;
+  function yearPanel(y) {
+    if (!y) return "";
+    const ms = D.months.filter((m) => m.m.startsWith(`${y.y}-`)), max = Math.max(1, ...ms.map((m) => Math.abs(m.pl)));
+    return `<div class="ypanel fade"><div class="yp-h"><div><b>${y.y}</b> <span class="muted">· ${ms.length} month${ms.length === 1 ? "" : "s"}</span></div>
+        <b class="${tone(y.pl)}">${money(y.pl)}</b></div>
+      <div class="yp-grid">${ms.map((m) => `<button class="yp-row" data-go="${href(y.y, m.m)}"><span class="mn">${MONTHS[+m.m.slice(5) - 1].slice(0, 3)}</span>
+        <span class="track"><i class="${m.pl < 0 ? "neg" : ""}" style="width:${Math.max(2, (Math.abs(m.pl) / max) * 100).toFixed(1)}%"></i></span>
+        <b class="${tone(m.pl)}">${money(m.pl)}</b></button>`).join("")}</div>
+      <div class="yp-f"><button class="yp-open" data-go="${href(y.y)}">Open ${y.y}: every month's calendar and sportsbooks ›</button></div></div>`;
+  }
   function viewAll() {
     const years = D.years;
     const yearsSpan = (() => { const a = dt(D.since), b = dt(D.through); const m = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1; return `${Math.floor(m / 12)} years, ${m % 12} months`; })();
     const cards = years.map((y) => {
       const ms = D.months.filter((m) => m.m.startsWith(`${y.y}-`));
-      return `<button class="ycard" data-go="${href(y.y)}"><div class="yh"><span class="yn">${y.y}</span>${CHEV}</div>
+      return `<button class="ycard${openYear === y.y ? " on" : ""}" data-year="${y.y}" aria-expanded="${openYear === y.y}"><div class="yh"><span class="yn">${y.y}</span>${CHEV}</div>
         <div class="yt ${tone(y.pl)}">${money(y.pl)}</div><div class="ym">${ms.length} month${ms.length === 1 ? "" : "s"}</div>${miniBars(ms.map((m) => m.pl))}</button>`;
     }).join("");
     const html = `<div class="hero2"><div class="big ${tone(D.overall)}">${money(D.overall)}</div>
         <div class="sub">All time · since ${mdy(D.since)}</div><div class="sub">${yearsSpan} · click a year to open it</div></div>
-      <div class="ycards">${cards}</div>
+      <div class="ycards">${cards}</div>${openYear ? yearPanel(yearOf(openYear)) : ""}
       <details class="panel drop"><summary><div><h3>Every sportsbook · all time</h3><div class="s">${D.all_books.filter((b) => b[0] !== "N/A").length} books · click to open</div></div>${CHEV}</summary>
         ${booksTable(D.all_books, { head: "All time", flat: true, more: (r) => {
           const ys = D.years.map((y) => [y.y, (y.books.find((b) => b[0] === r[0]) || [])[1]]).filter((x) => x[1] !== undefined);
@@ -373,6 +387,8 @@
     sendHeight();
   }
   app.addEventListener("click", (e) => {
+    const yc = e.target.closest("[data-year]");
+    if (yc) { openYear = openYear === +yc.dataset.year ? null : +yc.dataset.year; render(); return; }
     const more = e.target.closest("tr.row[data-book]");
     if (more) { const x = app.querySelector(`tr.more[data-more="${CSS.escape(more.dataset.book)}"]`); if (x) { x.hidden = !x.hidden; sendHeight(); } return; }
     const t = e.target.closest("[data-go]");
@@ -404,11 +420,14 @@
   function sendHeight() {
     if (!embedded) return;
     requestAnimationFrame(() => {
-      const h = Math.ceil(document.documentElement.scrollHeight);
+      // the content's own height (Nov 1: documentElement.scrollHeight is never less than the frame itself, so the frame stayed
+      // at its starting 1,800 px with a big empty gap under the page)
+      const wrap = document.querySelector(".wrap");
+      const h = Math.ceil(wrap ? wrap.getBoundingClientRect().bottom + window.scrollY : document.body.scrollHeight);
       if (Math.abs(h - lastH) > 2) { lastH = h; parent.postMessage({ type: "boostworld-pl-height", height: h }, "*"); }
     });
   }
-  if (embedded && "ResizeObserver" in window) new ResizeObserver(sendHeight).observe(document.body);
+  if (embedded && "ResizeObserver" in window) new ResizeObserver(sendHeight).observe(document.querySelector(".wrap") || document.body);
   document.addEventListener("toggle", sendHeight, true);
 
   (window.__PL ? Promise.resolve(window.__PL) : fetch("data/pl.json", { cache: "no-cache" }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }))
