@@ -62,16 +62,22 @@
   const go = (h) => { if (location.hash !== h) location.hash = h; else render(); };
 
   // ---------------------------------------------------------------- shared pieces
+  // the top row, as boostworld.us's own section looked (user, Nov 1: "I want the bottom one for the initial display, but I want
+  // it to where they can click inside everything"): where you are as pills, and a menu of the level under this one
+  const CHEV = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   function header(r) {
-    const crumbs = [`<button class="crumb${r.level === "all" ? " on" : ""}" data-go="#/"><span class="l">All time</span><span class="v ${tone(D.overall)}">${money(D.overall)}</span></button>`];
-    if (r.y) { const y = yearOf(r.y); crumbs.push(`<span class="sep">›</span><button class="crumb${r.level === "year" ? " on" : ""}${y.pl < 0 ? " neg" : ""}" data-go="${href(r.y)}"><span class="l">${r.y}</span><span class="v ${tone(y.pl)}">${money(y.pl)}</span></button>`); }
-    if (r.m) { const m = monthOf(r.m); crumbs.push(`<span class="sep">›</span><button class="crumb${r.level === "month" ? " on" : ""}${m.pl < 0 ? " neg" : ""}" data-go="${href(r.y, r.m)}"><span class="l">${MONTHS[+r.m.slice(5) - 1]}</span><span class="v ${tone(m.pl)}">${money(m.pl)}</span></button>`); }
-    if (r.d) { const d = dayRow(r.d); crumbs.push(`<span class="sep">›</span><button class="crumb on${d[1] < 0 ? " neg" : ""}" data-go="${href(r.y, r.m, r.d)}"><span class="l">${dayShort(r.d)}</span><span class="v ${tone(d[1])}">${money(d[1])}</span></button>`); }
-    const pick = { all: "Pick a year", year: "Pick a month", month: "Pick a day", day: "" }[r.level];
-    if (pick) crumbs.push(`<span class="sep">›</span><span class="hint">${pick}</span>`);
-    return `<div class="top"><h1>Boost World Profit / Loss</h1>
-        <div class="asof">Every day since ${mdy(D.since)} · updated through <b>${mdy(D.through)}</b></div></div>
-      <nav class="path" aria-label="Where you are">${crumbs.join("")}</nav>`;
+    const pills = [`<button class="pill${r.level === "all" ? " on" : ""}" data-go="#/">All time</button>`];
+    if (r.y) pills.push(`<span class="sep">›</span><button class="pill${r.level === "year" ? " on" : ""}" data-go="${href(r.y)}">${r.y}</button>`);
+    if (r.m) pills.push(`<span class="sep">›</span><button class="pill${r.level === "month" ? " on" : ""}" data-go="${href(r.y, r.m)}">${MONTHS[+r.m.slice(5) - 1]}</button>`);
+    if (r.d) pills.push(`<span class="sep">›</span><button class="pill on" data-go="${href(r.y, r.m, r.d)}">${esc(dayShort(r.d))}</button>`);
+    let ph, opts;
+    if (r.level === "all") { ph = "Pick a year"; opts = D.years.map((y) => [href(y.y), String(y.y)]); }
+    else if (r.level === "year") { ph = "Pick a month"; opts = D.months.filter((m) => m.m.startsWith(`${r.y}-`)).map((m) => [href(r.y, m.m), MONTHS[+m.m.slice(5) - 1]]); }
+    else { ph = "Pick a day"; opts = monthOf(r.m).days.map((d) => [href(r.y, r.m, d[0]), dayShort(d[0])]); }
+    const here = href(r.y, r.m, r.d);
+    return `<div class="nav"><nav class="pills" aria-label="Where you are">${pills.join("")}</nav>
+      <label class="pick"><select data-pick aria-label="${ph}"><option value="">${ph}</option>${opts.map(([h, l]) =>
+        `<option value="${h}"${h === here ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>${CHEV}</label></div>`;
   }
   function steps(r) {  // the level before / after
     let list, key, label, val, link;
@@ -92,14 +98,9 @@
       <div class="row"><span>Bonus bets</span><b class="bonus">${money(o.bonus)}</b></div>
       <div class="note">counted at ${esc(rateText(rates))}</div></div>`;
   }
-  function miniBars(values) {  // a card's months: wins up, losses down from one $0 line
-    const up = Math.max(0, ...values), dn = Math.max(0, ...values.map((v) => -v)), span = up + dn || 1;
-    const zero = dn ? Math.max(0.08, dn / span) : 0;
-    return `<div class="bars">${values.map((v) => {
-      const h = v >= 0 ? (v / (up || 1)) * (1 - zero) : (-v / (dn || 1)) * zero;
-      return `<div class="b"><i class="${v < 0 ? "neg" : ""}" style="${v >= 0 ? `bottom:${(zero * 100).toFixed(1)}%;height:${Math.max(v ? 3 : 0, h * 100).toFixed(1)}%`
-        : `top:${((1 - zero) * 100).toFixed(1)}%;height:${Math.max(3, h * 100).toFixed(1)}%`}"></i></div>`;
-    }).join("")}${dn ? `<span class="zero" style="bottom:${(zero * 100).toFixed(1)}%"></span>` : ""}</div>`;
+  function miniBars(values) {  // a year card's months: rounded bars from the bottom, a small month a dot, a losing one a red dot
+    const max = Math.max(1, ...values);
+    return `<div class="bars">${values.map((v) => `<i class="${v < 0 ? "neg" : ""}" style="height:${v > 0 ? Math.max(14, (v / max) * 100).toFixed(1) : 14}%"></i>`).join("")}</div>`;
   }
   function booksTable(rows, opts = {}) {
     // rows: [[code, pl, bets, won, lost]]; opts.second: {head, of(code)} a second amount column; opts.title / sub
@@ -132,22 +133,6 @@
       <tbody>${grp(`▲ ${opts.upLabel || "Up"}`, ups, "up")}${grp(`▼ ${opts.downLabel || "Down"}`, downs, "down")}${grp("● Even", evens, "flat")}${na.map((r) => line(r, "na")).join("")}
       <tr class="total"><td>Total</td><td class="wide-only"></td><td class="r amt ${tone(total)}">${money(total)}</td>${opts.second ? `<td class="r sec">${opts.second.total || ""}</td>` : ""}<td class="r sec">${bets.toLocaleString("en-US")}</td></tr></tbody></table>`;
   }
-  function howTracked(open) {
-    const eras = D.rates.map((r) => `<span><b>${pct(r.rate)}</b> ${r.to ? `${mdy(r.from)} – ${mdy(r.to)}` : `since ${mdy(r.from)}`}</span>`).join("");
-    const out = D.years.flatMap((y) => y.outside || []);
-    return `<details class="how"${open ? " open" : ""}><summary>How every number here is tracked</summary><div class="body"><ul>
-      <li>Every day is the number posted in the Boost World Discord, logged day by day since ${mdy(D.since)}. Each month adds up to its month post, and each year to its months.</li>
-      <li><b>Cash</b> is real money won or lost. A bet placed with a bonus bet counts only the cash it wins, and nothing when it loses.</li>
-      <li><b>Bonus bets won</b> (a sportsbook's free bets: promos, a lost stake back) are counted at part of their face value, never in full, since a bonus bet's own stake never comes back. Each day uses the value we posted with it:
-        <div class="rates">${eras}</div></li>
-      <li>A day's P/L = its cash + its bonus bets × that value. A day card shows the face value of the bonus bets (for example "+$10 bonus bets") and the total counts them at that value.</li>
-      <li><b>N/A</b> is an amount not tied to one sportsbook: a correction posted in Discord, or a day logged only as its total.</li>
-      ${out.length ? `<li>${out.map((o) => `${o.what} ${money(o.pl)} (${mdy(o.d)})`).join(" and ")} ${out.length === 1 ? "is" : "are"} part of the overall but outside any month, as posted in Discord.</li>` : ""}
-      <li><b>Units:</b> 1 unit = $${D.unit}. ${money(D.overall)} is ${D.units.toLocaleString("en-US", { maximumFractionDigits: 1 })} units.</li>
-      <li>This page is updated ${D.every === "day" ? "every day" : D.every === "week" ? "every week" : "at the start of every month"}; the newest days are in Discord first.</li>
-    </ul></div></details>`;
-  }
-
   // ---------------------------------------------------------------- charts
   function attachTip(root) {
     root.querySelectorAll("[data-tip]").forEach((el) => {
@@ -210,24 +195,31 @@
     const yearsSpan = (() => { const a = dt(D.since), b = dt(D.through); const m = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1; return `${Math.floor(m / 12)} years, ${m % 12} months`; })();
     const cards = years.map((y) => {
       const ms = D.months.filter((m) => m.m.startsWith(`${y.y}-`));
-      const extra = (y.outside || []).filter((o) => o.book);
-      return `<button class="card${y.pl < 0 ? " neg" : ""}" data-go="${href(y.y)}"><div class="name">${y.y}</div><div class="total ${tone(y.pl)}">${money(y.pl)}</div>
-        ${cashBonus(y, y.rates)}<div class="meta">${ms.length} month${ms.length === 1 ? "" : "s"}${extra.map((o) => ` + ${esc(o.what)} (${money(o.pl)})`).join("")}</div>${miniBars(ms.map((m) => m.pl))}</button>`;
+      return `<button class="ycard" data-go="${href(y.y)}"><div class="yh"><span class="yn">${y.y}</span>${CHEV}</div>
+        <div class="yt ${tone(y.pl)}">${money(y.pl)}</div><div class="ym">${ms.length} month${ms.length === 1 ? "" : "s"}</div>${miniBars(ms.map((m) => m.pl))}</button>`;
     }).join("");
-    const html = `<div class="hero"><div><div class="k">All time · since ${mdy(D.since)}</div><div class="big ${tone(D.overall)}">${money(D.overall)}</div>
-        <div class="sub">${yearsSpan} · click a year to open it</div></div></div>
-      <div class="cards years">${cards}</div>
-      <div class="panel"><div class="ph"><div><h3>Every sportsbook · all time</h3><div class="s">click a book for its years</div></div></div>
+    const html = `<div class="hero2"><div class="big ${tone(D.overall)}">${money(D.overall)}</div>
+        <div class="sub">All time · since ${mdy(D.since)}</div><div class="sub">${yearsSpan} · click a year to open it</div></div>
+      <div class="ycards">${cards}</div>
+      <details class="panel drop"><summary><div><h3>Every sportsbook · all time</h3><div class="s">${D.all_books.filter((b) => b[0] !== "N/A").length} books · click to open</div></div>${CHEV}</summary>
         ${booksTable(D.all_books, { head: "All time", flat: true, more: (r) => {
           const ys = D.years.map((y) => [y.y, (y.books.find((b) => b[0] === r[0]) || [])[1]]).filter((x) => x[1] !== undefined);
           const span = (D.books[r[0]] || {}).span || [];
           return `<div class="yrs">${ys.map(([y, v]) => `<span>${y} ${M(v)}</span>`).join("")}${r[2] ? `<span class="muted">${r[3]} won · ${r[4]} lost</span>` : ""}${span[0] ? `<span class="muted">${mdy(span[0])} – ${mdy(span[1])}</span>` : ""}</div>`;
-        } })}</div>
-      ${howTracked(true)}`;
+        } })}</details>`;
     // (no every-month chart here: boostworld.us shows its own climb right above this page; user, Nov 1)
     return { html, charts: {} };
   }
 
+  // an amount outside the year's months (FanDuel's Dinger Tuesday, 2022): a quiet line at the foot of its year only (user, Nov 1:
+  // "a note or something saying ... that there is the FanDuel Dinger Tuesday, but I don't want that to be so like blaring obvious")
+  function outsideNote(y) {
+    const out = y.outside || [];
+    if (!out.length) return "";
+    const total = out.reduce((t, o) => t + cents(o.pl), 0) / 100;
+    const parts = out.map((o) => o.book === "FD" ? `FanDuel's Dinger Tuesday promo, ${money(o.pl)}, tracked on its own until ${mdy(o.d)}` : `an overall P/L adjustment, ${money(o.pl)}`);
+    return `<div class="fine">ⓘ ${y.y} includes ${money(total)} that isn't in any one month: ${parts.join(", and ")}.</div>`;
+  }
   function viewYear(r) {
     const y = yearOf(r.y), ms = D.months.filter((m) => m.m.startsWith(`${r.y}-`));
     const lastDay = ms.length ? ms[ms.length - 1].days.slice(-1)[0][0] : null;
@@ -252,10 +244,9 @@
         <div class="side"><div class="kv"><div class="k">Winning months</div><div class="v">${ms.filter((m) => m.pl > 0).length} of ${ms.length}</div></div>
         <div class="kv"><div class="k">Overall since ${mdy(D.since)}</div><div class="v ${tone(overallThen)}">${money(overallThen)}</div></div></div></div>
       <div class="cards months">${cards}</div>
-      ${(y.outside || []).length ? `<div class="dnote">${y.outside.map((o) => `${esc(o.what)} ${money(o.pl)} (${mdy(o.d)})`).join(" · ")}: part of ${r.y} and the overall, outside any month, as posted.</div>` : ""}
       <div class="panel"><div class="ph"><div><h3>Each month · ${r.y}</h3><div class="s">click a month to open it</div></div></div><div data-chart-slot="months"></div></div>
       <div class="panel"><div class="ph"><div><h3>Sportsbooks · ${r.y}</h3></div></div>${booksTable(y.books, { head: String(r.y), upLabel: "Up this year", downLabel: "Down this year" })}</div>
-      ${howTracked(false)}`;
+      ${outsideNote(y)}`;
     return { html, charts: { months: barChart(pts, { h: 260, label: `${r.y} by month` }) } };
   }
 
@@ -306,8 +297,7 @@
       <div class="panel"><div class="ph"><div><h3>Sportsbooks · ${esc(monthName(r.m))}</h3><div class="s">the right column is each book's ${r.y}</div></div></div>
         ${booksTable(m.books, { head: MONTHS[+r.m.slice(5) - 1], second: { head: String(r.y), of: (c) => yb[c] !== undefined ? M(yb[c]) : "", total: M(y.pl) }, upLabel: "Up this month", downLabel: "Down this month" })}
         ${notUsed.length ? `<div class="dnote">Not used in ${MONTHS[+r.m.slice(5) - 1]}: ${notUsed.map((b) => `${esc(bookName(b[0]))} (${money(b[1])} in ${r.y})`).join(" · ")}</div>` : ""}</div>
-      <details class="everyday"><summary>Every day · ${esc(monthName(r.m))} (${m.days.length})</summary><div class="dlist">${m.days.map((d) => `<button data-go="${href(r.y, r.m, d[0])}"><span>${dayShort(d[0])}</span><b class="${tone(d[1])}">${money(d[1])}</b></button>`).join("")}</div></details>
-      ${howTracked(false)}`;
+      <details class="everyday"><summary>Every day · ${esc(monthName(r.m))} (${m.days.length})</summary><div class="dlist">${m.days.map((d) => `<button data-go="${href(r.y, r.m, d[0])}"><span>${dayShort(d[0])}</span><b class="${tone(d[1])}">${money(d[1])}</b></button>`).join("")}</div></details>`;
     loadMonth(r.m).catch(() => {});  // ready for a day
     return { html, charts: { days: barChart(pts, { line: true, h: 240, label: `${monthName(r.m)} by day` }) } };
   }
@@ -354,7 +344,7 @@
       strip += d ? `<button class="${d[0] === r.d ? "on" : ""}" style="background:${shade(d[1], max)}" data-go="${href(r.y, r.m, d[0])}" data-tip="${esc(`${dayShort(d[0])}<br><b class='${tone(d[1])}'>${money(d[1])}</b>`)}">${i}</button>`
         : `<button class="none" disabled>${i}</button>`;
     }
-    const html = `${steps(r)}<div class="dstrip">${strip}</div><div id="daycard"><div class="loading">Loading ${esc(dayLong(r.d))}…</div></div>${howTracked(false)}`;
+    const html = `${steps(r)}<div class="dstrip">${strip}</div><div id="daycard"><div class="loading">Loading ${esc(dayLong(r.d))}…</div></div>`;
     loadMonth(r.m).then((md) => {
       const day = md.days.find((d) => d.d === r.d), slot = document.getElementById("daycard");
       if (!slot || route().d !== r.d) return;
@@ -387,6 +377,9 @@
     if (more) { const x = app.querySelector(`tr.more[data-more="${CSS.escape(more.dataset.book)}"]`); if (x) { x.hidden = !x.hidden; sendHeight(); } return; }
     const t = e.target.closest("[data-go]");
     if (t && t.dataset.go) { e.preventDefault(); go(t.dataset.go); }
+  });
+  app.addEventListener("change", (e) => {
+    if (e.target.matches("[data-pick]") && e.target.value) go(e.target.value);
   });
   app.addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === " ") && e.target.matches("[role=button][data-go]")) { e.preventDefault(); go(e.target.dataset.go); }
