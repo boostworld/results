@@ -108,14 +108,17 @@
     // (losers biggest loss first, as his page lists them; a book that broke even is its own group, never "down")
     const ups = books.filter((r) => cents(r[1]) > 0), downs = books.filter((r) => cents(r[1]) < 0).sort((a, b) => a[1] - b[1]);
     const evens = books.filter((r) => cents(r[1]) === 0);
-    const max = Math.max(1, ...rows.map((r) => Math.abs(r[1])));
+    // $0 where the numbers put it: the biggest win to its right, the biggest loss to its left (all time: a $140 loss against
+    // $17,624, so the bars start right by the names; it had sat in the middle, half the bar empty)
+    const pos = Math.max(0, ...rows.map((r) => r[1])), neg = Math.max(0, ...rows.map((r) => -r[1])), span = Math.max(1, pos + neg);
+    const zero = neg ? Math.max(3, (neg / span) * 100) : 0, room = 100 - zero;
     const total = rows.reduce((t, r) => t + cents(r[1]), 0) / 100, bets = rows.reduce((t, r) => t + (r[2] || 0), 0);
     const line = (r, cls = "") => {
-      const w = (Math.abs(r[1]) / max) * 50;
-      const fill = cents(r[1]) >= 0 ? `left:50%;width:${w.toFixed(2)}%;background:linear-gradient(90deg,#16a34a,#4ade80)` : `right:50%;width:${w.toFixed(2)}%;background:linear-gradient(90deg,#fb7185,#ef4444)`;
+      const fill = cents(r[1]) >= 0 ? `left:${zero.toFixed(2)}%;width:${(pos ? (r[1] / pos) * room : 0).toFixed(2)}%;background:linear-gradient(90deg,#16a34a,#4ade80)`
+        : `right:${room.toFixed(2)}%;width:${(neg ? (-r[1] / neg) * zero : 0).toFixed(2)}%;background:linear-gradient(90deg,#fb7185,#ef4444)`;
       const open = opts.more ? `<tr class="more" data-more="${esc(r[0])}" hidden><td colspan="${opts.second ? 5 : 4}">${opts.more(r)}</td></tr>` : "";
       return `<tr class="row ${cls}" data-book="${esc(r[0])}"><td><span class="bk"><span class="dot" style="background:${bookColor(r[0])}"></span>${esc(r[0] === "N/A" ? "N/A" : bookName(r[0]))}</span></td>
-        <td class="wide-only" style="width:34%"><div class="track"><span class="fill" style="${fill}"></span></div></td>
+        <td class="wide-only"><div class="track"><span class="fill" style="${fill}"></span></div></td>
         <td class="r amt ${tone(r[1])}">${money(r[1])}</td>${opts.second ? `<td class="r sec">${opts.second.of(r[0])}</td>` : ""}
         <td class="r sec">${r[2] ? r[2].toLocaleString("en-US") : ""}</td></tr>${open}`;
     };
@@ -125,11 +128,11 @@
     // categorize them as up all time, down all time ... doesn't draw so much attention to the red ones")
     if (opts.flat) {
       const order = [...ups, ...na, ...evens, ...downs.slice().reverse()];
-      return `<table class="books"><thead><tr><th>Book</th><th class="wide-only"></th><th class="r">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r">${esc(opts.second.head)}</th>` : ""}<th class="r">Bets</th></tr></thead>
+      return `<table class="books${opts.second ? " two" : ""}"><thead><tr><th class="c-name">Book</th><th class="wide-only c-bar"></th><th class="r c-amt">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r c-two">${esc(opts.second.head)}</th>` : ""}<th class="r c-bets">Bets</th></tr></thead>
         <tbody>${order.map((r) => line(r, r[0] === "N/A" || r[0] === "NB" ? "na" : "")).join("")}
         <tr class="total"><td>Total</td><td class="wide-only"></td><td class="r amt ${tone(total)}">${money(total)}</td>${opts.second ? `<td class="r sec">${opts.second.total || ""}</td>` : ""}<td class="r sec">${bets.toLocaleString("en-US")}</td></tr></tbody></table>`;
     }
-    return `<table class="books"><thead><tr><th>Book</th><th class="wide-only"></th><th class="r">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r">${esc(opts.second.head)}</th>` : ""}<th class="r">Bets</th></tr></thead>
+    return `<table class="books${opts.second ? " two" : ""}"><thead><tr><th class="c-name">Book</th><th class="wide-only c-bar"></th><th class="r c-amt">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r c-two">${esc(opts.second.head)}</th>` : ""}<th class="r c-bets">Bets</th></tr></thead>
       <tbody>${grp(`▲ ${opts.upLabel || "Up"}`, ups, "up")}${grp(`▼ ${opts.downLabel || "Down"}`, downs, "down")}${grp("● Even", evens, "flat")}${na.map((r) => line(r, "na")).join("")}
       <tr class="total"><td>Total</td><td class="wide-only"></td><td class="r amt ${tone(total)}">${money(total)}</td>${opts.second ? `<td class="r sec">${opts.second.total || ""}</td>` : ""}<td class="r sec">${bets.toLocaleString("en-US")}</td></tr></tbody></table>`;
   }
