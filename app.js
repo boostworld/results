@@ -473,7 +473,7 @@
     const cash = (day.lines || []).reduce((t, l) => t + cents(l[0]), 0) / 100, bonus = (day.lines || []).reduce((t, l) => t + cents(l[1]), 0) / 100;
     const paren = cents(bonus) ? ` <span class="paren">(${money(cash, { trim: true })}, <span class="bonus">${money(bonus, { trim: true })} bonus bets</span>)</span>` : "";
     const tiles = day.books.map((b) => b[0] === "N/A" ? `<div class="tile na"><div class="t">N/A</div><div class="v">${money(b[1], { trim: true })}</div></div>`
-      : `<div class="tile"><div class="t" style="color:${bookColor(b[0])}">${esc(bookName(b[0]) === b[0] ? b[0] : `${bookName(b[0])} (${b[0]})`)}</div><div class="v ${tone(b[1])}">${money(b[1], { trim: true })}</div></div>`).join("");
+      : `<div class="tile"><div class="t" style="color:${bookColor(b[0])}">${esc(bookName(b[0]) === b[0] ? b[0] : `${bookName(b[0])} (${b[0]})`)}</div><div class="v ${tone(b[1])}">${money(b[1], { trim: true })}</div>${b[2] ? `<div class="nb">net of ${plural(b[2], "bet")}</div>` : ""}</div>`).join("");
     const nBooks = day.books.filter((b) => b[0] !== "N/A" && b[0] !== "NB").length;
     return `<div class="daycard${won ? "" : " neg"} fade">
       <div class="dc-top"><div><div class="dc-brand">BOOST WORLD <span>DAILY P/L</span></div><div class="dc-date">${mdy(day.d)}</div><div class="dc-wd">${WD[dt(day.d).getUTCDay()]}</div></div>
@@ -481,7 +481,7 @@
       ${day.bets ? `<div class="chips"><span class="chip"><b>${day.bets}</b>${day.bets === 1 ? "bet" : "bets"}</span><span class="chip"><b class="up">${day.won}</b>won</span><span class="chip"><b class="down">${day.lost}</b>lost</span><span class="chip"><b>${nBooks}</b>book${nBooks === 1 ? "" : "s"}</span></div>` : ""}
       ${day.lines && day.lines.length ? `<div class="lines">${lines}</div>` : `<div class="dnote">This day is its posted total; its bets weren't listed one by one.</div>`}
       <div class="result ${tone(pl)}">= ${cents(pl) >= 0 ? "Won" : "Lost"} ${money(Math.abs(pl), { plain: true, trim: true })}${day.lines && day.lines.length ? paren : ""}</div>
-      <div class="eyebrow" style="margin-bottom:8px">Each book today</div><div class="tiles">${tiles}</div>
+      <div class="eyebrow" style="margin-bottom:8px">Each book today · net</div><div class="tiles">${tiles}</div>
       ${(() => { const notes = [];
         if (cents(row[2])) notes.push(`Month adjustment ${money(row[2])}, counted in the month's total.`);
         D.years.flatMap((x) => x.outside || []).filter((o) => o.d === day.d && o.book).forEach((o) =>
