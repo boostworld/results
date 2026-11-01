@@ -417,3 +417,25 @@
   .outsum .os-row b { font-family: var(--display); font-variant-numeric: tabular-nums; }
   .outsum .os-row.tot { color: var(--text); font-weight: 600; background: rgba(148, 163, 184, .05); }
   .tile .nb { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* the book tiles, three sizes to pick from (?tiles=a|b|c; Nov 1) */
+  body[data-tiles="a"] .tiles { grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
+  body[data-tiles="a"] .tile { padding: 13px 16px; border-radius: 12px; }
+  body[data-tiles="a"] .tile .t { font-size: 15px; }
+  body[data-tiles="a"] .tile .v { font-size: 26px; margin-top: 2px; }
+  body[data-tiles="a"] .tile .nb { font-size: 13px; }
+  body[data-tiles="b"] .tiles { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 12px; }
+  body[data-tiles="b"] .tile { padding: 16px 18px; border-radius: 14px; }
+  body[data-tiles="b"] .tile .t { font-size: 16.5px; }
+  body[data-tiles="b"] .tile .v { font-size: 32px; margin-top: 3px; letter-spacing: -.01em; }
+  body[data-tiles="b"] .tile .nb { font-size: 13.5px; margin-top: 3px; }
+  body[data-tiles="c"] .tiles { grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 14px; }
+  body[data-tiles="c"] .tile { padding: 18px 22px 17px; border-radius: 16px; }
+  body[data-tiles="c"] .tile .t { font-size: 18px; }
+  body[data-tiles="c"] .tile .v { font-size: 40px; line-height: 1.1; margin-top: 4px; letter-spacing: -.02em; }
+  body[data-tiles="c"] .tile .nb { font-size: 14px; margin-top: 4px; }
+  @media (max-width: 820px) {
+    body[data-tiles] .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    body[data-tiles="a"] .tile .t { font-size: 13.5px; } body[data-tiles="a"] .tile .v { font-size: 22px; }
+    body[data-tiles="b"] .tile .t { font-size: 14px; } body[data-tiles="b"] .tile .v { font-size: 25px; } body[data-tiles="b"] .tile { padding: 12px 13px; }
+    body[data-tiles="c"] .tile .t { font-size: 14.5px; } body[data-tiles="c"] .tile .v { font-size: 29px; } body[data-tiles="c"] .tile { padding: 13px 14px; }
+  }

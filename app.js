@@ -3,6 +3,9 @@
   const app = document.getElementById("app"), tipEl = document.getElementById("tip");
   const embedded = window.parent !== window;
   if (embedded) document.body.classList.add("embedded");
+  // three sizes for the day card's book tiles to compare (user, Nov 1: "give me 3 different options ... I can pick"): ?tiles=a|b|c
+  const tilesPick = new URLSearchParams(location.search).get("tiles");
+  if (/^[abc]$/.test(tilesPick || "")) document.body.dataset.tiles = tilesPick;
   let D = null;                      // data/pl.json
   const monthFiles = {};             // "2025-12" -> its days (data/m/2025-12.json)
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
