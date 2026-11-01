@@ -114,7 +114,7 @@
       const w = (Math.abs(r[1]) / max) * 50;
       const fill = cents(r[1]) >= 0 ? `left:50%;width:${w.toFixed(2)}%;background:linear-gradient(90deg,#16a34a,#4ade80)` : `right:50%;width:${w.toFixed(2)}%;background:linear-gradient(90deg,#fb7185,#ef4444)`;
       const open = opts.more ? `<tr class="more" data-more="${esc(r[0])}" hidden><td colspan="${opts.second ? 5 : 4}">${opts.more(r)}</td></tr>` : "";
-      return `<tr class="row ${cls}" data-book="${esc(r[0])}"><td><span class="bk"><span class="dot" style="background:${bookColor(r[0])}"></span>${esc(r[0] === "N/A" ? "N/A (not tied to a book)" : bookName(r[0]))}</span></td>
+      return `<tr class="row ${cls}" data-book="${esc(r[0])}"><td><span class="bk"><span class="dot" style="background:${bookColor(r[0])}"></span>${esc(r[0] === "N/A" ? "N/A" : bookName(r[0]))}</span></td>
         <td class="wide-only" style="width:34%"><div class="track"><span class="fill" style="${fill}"></span></div></td>
         <td class="r amt ${tone(r[1])}">${money(r[1])}</td>${opts.second ? `<td class="r sec">${opts.second.of(r[0])}</td>` : ""}
         <td class="r sec">${r[2] ? r[2].toLocaleString("en-US") : ""}</td></tr>${open}`;
@@ -431,7 +431,7 @@
     const pl = day.pl, won = cents(pl) >= 0;
     const cash = (day.lines || []).reduce((t, l) => t + cents(l[0]), 0) / 100, bonus = (day.lines || []).reduce((t, l) => t + cents(l[1]), 0) / 100;
     const paren = cents(bonus) ? ` <span class="paren">(${money(cash, { trim: true })}, <span class="bonus">${money(bonus, { trim: true })} bonus bets</span>)</span>` : "";
-    const tiles = day.books.map((b) => `<div class="tile"><div class="t" style="color:${bookColor(b[0])}">${esc(b[0] === "N/A" ? "N/A (not tied to a book)" : `${bookName(b[0])} (${b[0]})`)}</div><div class="v ${tone(b[1])}">${money(b[1], { trim: true })}</div></div>`).join("");
+    const tiles = day.books.map((b) => `<div class="tile"><div class="t" style="color:${bookColor(b[0])}">${esc(b[0] === "N/A" ? "N/A" : `${bookName(b[0])} (${b[0]})`)}</div><div class="v ${tone(b[1])}">${money(b[1], { trim: true })}</div></div>`).join("");
     const nBooks = day.books.filter((b) => b[0] !== "N/A" && b[0] !== "NB").length;
     return `<div class="daycard${won ? "" : " neg"} fade">
       <div class="dc-top"><div><div class="dc-brand">BOOST WORLD <span>DAILY P/L</span></div><div class="dc-date">${mdy(day.d)}</div><div class="dc-wd">${WD[dt(day.d).getUTCDay()]}</div></div>
