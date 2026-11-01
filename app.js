@@ -120,6 +120,14 @@
     };
     const cols = opts.second ? 5 : 4;
     const grp = (label, list, cls) => list.length ? `<tr class="grp"><td colspan="${cols}"><span class="${cls}">${label}</span> <span class="${cls}">${money(list.reduce((t, r) => t + cents(r[1]), 0) / 100)}</span> <span class="faint" style="font-weight:600">· ${list.length} book${list.length === 1 ? "" : "s"}</span></td></tr>${list.map((r) => line(r)).join("")}` : "";
+    // flat (all time): one list, the winners, N/A, then the losers best to worst, no group headers (user, Nov 1: "don't
+    // categorize them as up all time, down all time ... doesn't draw so much attention to the red ones")
+    if (opts.flat) {
+      const order = [...ups, ...na, ...evens, ...downs.slice().reverse()];
+      return `<table class="books"><thead><tr><th>Book</th><th class="wide-only"></th><th class="r">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r">${esc(opts.second.head)}</th>` : ""}<th class="r">Bets</th></tr></thead>
+        <tbody>${order.map((r) => line(r, r[0] === "N/A" || r[0] === "NB" ? "na" : "")).join("")}
+        <tr class="total"><td>Total</td><td class="wide-only"></td><td class="r amt ${tone(total)}">${money(total)}</td>${opts.second ? `<td class="r sec">${opts.second.total || ""}</td>` : ""}<td class="r sec">${bets.toLocaleString("en-US")}</td></tr></tbody></table>`;
+    }
     return `<table class="books"><thead><tr><th>Book</th><th class="wide-only"></th><th class="r">${esc(opts.head || "P/L")}</th>${opts.second ? `<th class="r">${esc(opts.second.head)}</th>` : ""}<th class="r">Bets</th></tr></thead>
       <tbody>${grp(`▲ ${opts.upLabel || "Up"}`, ups, "up")}${grp(`▼ ${opts.downLabel || "Down"}`, downs, "down")}${grp("● Even", evens, "flat")}${na.map((r) => line(r, "na")).join("")}
       <tr class="total"><td>Total</td><td class="wide-only"></td><td class="r amt ${tone(total)}">${money(total)}</td>${opts.second ? `<td class="r sec">${opts.second.total || ""}</td>` : ""}<td class="r sec">${bets.toLocaleString("en-US")}</td></tr></tbody></table>`;
@@ -210,7 +218,7 @@
         <div class="sub">${yearsSpan} · click a year to open it</div></div></div>
       <div class="cards years">${cards}</div>
       <div class="panel"><div class="ph"><div><h3>Every sportsbook · all time</h3><div class="s">click a book for its years</div></div></div>
-        ${booksTable(D.all_books, { head: "All time", upLabel: "Up all time", downLabel: "Down all time", more: (r) => {
+        ${booksTable(D.all_books, { head: "All time", flat: true, more: (r) => {
           const ys = D.years.map((y) => [y.y, (y.books.find((b) => b[0] === r[0]) || [])[1]]).filter((x) => x[1] !== undefined);
           const span = (D.books[r[0]] || {}).span || [];
           return `<div class="yrs">${ys.map(([y, v]) => `<span>${y} ${M(v)}</span>`).join("")}${r[2] ? `<span class="muted">${r[3]} won · ${r[4]} lost</span>` : ""}${span[0] ? `<span class="muted">${mdy(span[0])} – ${mdy(span[1])}</span>` : ""}</div>`;
