@@ -22,10 +22,6 @@
   const climbMonth = (iso) => iso.slice(8) === "01" && iso.slice(5, 7) !== "01" ? `${iso.slice(0, 5)}${String(+iso.slice(5, 7) - 1).padStart(2, "0")}` : null;
   const plural = (n, w) => `${n.toLocaleString("en-US")} ${w}${n === 1 ? "" : "s"}`;
   const M = (v, opts) => `<span class="${tone(v)}">${money(v, opts)}</span>`;
-  const short = (v) => {  // +$4,439 / -$1.3k for small places
-    const a = Math.abs(v), s = v > 0.004 ? "+" : v < -0.004 ? "-" : "";
-    return `${s}$${a >= 10000 ? (a / 1000).toFixed(1) + "k" : Math.round(a).toLocaleString("en-US")}`;
-  };
   const dt = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
   const mdy = (iso) => { const d = dt(iso); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}/${d.getUTCFullYear()}`; };
   const monthName = (m) => `${MONTHS[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}`;
@@ -349,7 +345,12 @@
     return { html, charts: {} };
   }
 
-  const tiny = (v) => (cents(v) > 0 ? "+" : cents(v) < 0 ? "-" : "") + (Math.abs(v) >= 1000 ? `${(Math.abs(v) / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(Math.round(Math.abs(v))));
+  // a phone's day square: the exact amount, its dollars over its cents ("+$558" / ".63"; user, Nov 2: "I want the numbers to be
+  // exact ... plus and then a dollar sign"), sized to the square (no comma: "+$1234")
+  const tiny = (v) => {
+    const c = cents(v), dollars = `${c > 0 ? "+" : c < 0 ? "-" : ""}$${Math.floor(Math.abs(c) / 100)}`;
+    return `<b style="--n:${dollars.length}">${dollars}</b><i>.${String(Math.abs(c) % 100).padStart(2, "0")}</i>`;
+  };
   const naNote = (rows) => rows.some((b) => b[0] === "N/A" && cents(b[1])) ? `<div class="dnote na-note">N/A: ${naLedger().replace(/<[^>]+>/g, "")}</div>` : "";
   // N/A in one calm line (user, Nov 1: "very transparent ... but I also don't want it to look like I made too many errors ... as
   // much as we can do to be vague about the NA"); its pieces stay in the log on his PC
@@ -388,7 +389,7 @@
           : `<span class="c none">${i}</span>`;
       }
       return `<div class="card${m.pl < 0 ? " neg" : ""}" role="button" tabindex="0" data-go="${href(r.y, m.m)}"><div class="name">${MONTHS[+m.m.slice(5) - 1]}</div>
-        <div class="total ${tone(m.pl)}">${money(m.pl)}</div>${cashBonus(m, m.rates)}<div class="meta">${m.days.length} days${m.full ? "" : " so far"}</div><div class="mcal">${cells}</div></div>`;
+        <div class="total ${tone(m.pl)}">${money(m.pl)}</div>${cashBonus(m, m.rates)}<div class="meta">${plural(m.days.length, "day")}${m.full ? "" : " so far"}</div><div class="mcal">${cells}</div></div>`;
     }).join("");
     const pts = ms.map((m) => ({ label: monthName(m.m), v: m.pl, go: href(r.y, m.m), axis: MONTHS[+m.m.slice(5) - 1].slice(0, 3) }));
     const html = `${steps(r)}<div class="hero"><div><div class="k">${full ? "Full year" : `So far · through ${mdy(D.through)}`}</div><div class="big ${tone(y.pl)}">${money(y.pl)}</div>
@@ -406,7 +407,7 @@
     const m = monthOf(r.m), y = yearOf(r.y);
     const strip = MONTHS.map((nm, i) => {
       const k = `${r.y}-${String(i + 1).padStart(2, "0")}`, x = monthOf(k);
-      return x ? `<button class="${k === r.m ? "on" : ""}" data-go="${href(r.y, k)}"><div class="m">${nm.slice(0, 3)}</div><div class="v ${tone(x.pl)}">${short(x.pl)}</div></button>`
+      return x ? `<button class="${k === r.m ? "on" : ""}" data-go="${href(r.y, k)}"><div class="m">${nm.slice(0, 3)}</div><div class="v ${tone(x.pl)}">${money(x.pl)}</div></button>`
         : `<button class="off" disabled><div class="m">${nm.slice(0, 3)}</div><div class="v">–</div></button>`;
     }).join("");
     const last = m.days.slice(-1)[0][0];
@@ -438,7 +439,7 @@
     const adjTotal = m.days.reduce((t, d) => t + cents(d[2]), 0) / 100;
     const html = `${steps(r)}<div class="mstrip">${strip}</div>
       <div class="hero"><div><div class="k">${esc(monthName(r.m))} P/L${m.full ? "" : " so far"}</div><div class="big ${tone(m.pl)}">${money(m.pl)}</div>
-        <div class="sub">${m.days.length} days · ${ups} up · ${downs} down</div></div>
+        <div class="sub">${plural(m.days.length, "day")} · ${ups} up · ${downs} down</div></div>
         <div class="side"><div class="kv small"><div class="k">${r.y} through ${MONTHS[+r.m.slice(5) - 1].slice(0, 3)}</div><div class="v ${tone(ytdThen)}">${money(ytdThen)}</div></div>
           <div class="kv small"><div class="k">${m.full ? `Overall P/L at the end of ${MONTHS[+r.m.slice(5) - 1]}` : `Overall P/L through ${mdy(last)}`}</div><div class="v ${tone(overallThen)}">${money(overallThen)}</div></div>
           <div class="split">Cash <b class="${tone(m.cash)}">${money(m.cash)}</b><br><span class="bonus">Bonus bets <b>${money(m.worth)}</b></span> <span class="muted">(${money(m.bonus, { plain: true, trim: true })} at ${esc(rateText(m.rates).replace(" value", ""))})</span></div></div></div>
