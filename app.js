@@ -145,7 +145,10 @@
     });
   }
   function barChart(points, opts = {}) {
-    // points: [{key, label, v, tip, go, axis}], opts.line: running total
+    // points: [{key, label, v, tip, go, axis, slot}], opts.line: running total; opts.slots: the whole span's places (a month's
+    // days, a year's months) with each point in its own (p.slot) and opts.axis(slot) its label, so a month with one day so far
+    // is one bar in its place, not the whole width (user, Nov 2: "the day-by-day does look a little wonky when there's only
+    // one day so far ... it's literally just all green")
     const el = document.createElement("div");
     el.className = "chart";
     el.dataset.chart = "1";
@@ -154,7 +157,8 @@
       const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
       const vals = points.map((p) => p.v), maxUp = Math.max(0, ...vals), maxDn = Math.max(0, ...vals.map((v) => -v));
       const span = maxUp + maxDn || 1, y0 = pad.t + ih * (maxUp / span), sc = ih / span;
-      const bw = iw / points.length, gap = Math.min(6, bw * .22);
+      const slots = opts.slots || points.length, at = (p, i) => (opts.slots ? p.slot : i);
+      const bw = iw / slots, gap = Math.min(6, bw * .22);
       let run = 0;
       const runs = points.map((p) => (run += p.v));
       const rMax = Math.max(1, ...runs), rMin = Math.min(0, ...runs);
@@ -167,18 +171,24 @@
           <text x="${pad.l - 10}" y="${y + 4}" text-anchor="end">${v === 0 ? "$0" : (v < 0 ? "-" : "") + nice(Math.abs(v))}</text>`;
       });
       if (opts.line) [rMax, (rMax + rMin) / 2].forEach((v) => { svg += `<text x="${W - pad.r + 8}" y="${ry(v) + 4}" fill="#a5b4fc" style="fill:#a5b4fc">${nice(v)}</text>`; });
-      points.forEach((p, i) => {
-        const x = pad.l + i * bw + gap / 2, w = Math.max(1, bw - gap), h = Math.abs(p.v) * sc;
-        const y = p.v >= 0 ? y0 - h : y0;
-        svg += `<rect x="${x}" y="${y}" width="${w}" height="${Math.max(p.v ? 1.5 : 0, h)}" rx="${Math.min(4, w / 3)}" fill="${p.v >= 0 ? "url(#gUp)" : "url(#gDn)"}"/>`;
-        if (p.axis) svg += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${esc(bw < 34 && /^[A-Z]/.test(p.axis) ? p.axis[0] : p.axis)}</text>`;
-      });
-      if (opts.line) {
-        const path = runs.map((v, i) => `${i ? "L" : "M"}${(pad.l + i * bw + bw / 2).toFixed(1)},${ry(v).toFixed(1)}`).join("");
-        svg += `<path d="${path}" fill="none" stroke="#a5b4fc" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if (opts.axis) for (let k = 0; k < slots; k++) {
+        const t = opts.axis(k);
+        if (t) svg += `<text x="${pad.l + k * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(bw < 34 && /^[A-Z]/.test(t) ? t[0] : t)}</text>`;
       }
       points.forEach((p, i) => {
-        svg += `<rect class="hit" x="${pad.l + i * bw}" y="${pad.t}" width="${bw}" height="${ih}" fill="transparent" data-go="${p.go || ""}"
+        const x = pad.l + at(p, i) * bw + gap / 2, w = Math.max(1, bw - gap), h = Math.abs(p.v) * sc;
+        const y = p.v >= 0 ? y0 - h : y0;
+        svg += `<rect x="${x}" y="${y}" width="${w}" height="${Math.max(p.v ? 1.5 : 0, h)}" rx="${Math.min(4, w / 3)}" fill="${p.v >= 0 ? "url(#gUp)" : "url(#gDn)"}"/>`;
+        if (p.axis && !opts.axis) svg += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${esc(bw < 34 && /^[A-Z]/.test(p.axis) ? p.axis[0] : p.axis)}</text>`;
+      });
+      if (opts.line) {
+        const path = runs.map((v, i) => `${i ? "L" : "M"}${(pad.l + at(points[i], i) * bw + bw / 2).toFixed(1)},${ry(v).toFixed(1)}`).join("");
+        svg += `<path d="${path}" fill="none" stroke="#a5b4fc" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+        const lx = pad.l + at(points[points.length - 1], points.length - 1) * bw + bw / 2;  // (where the running total is now)
+        if (points.length) svg += `<circle cx="${lx.toFixed(1)}" cy="${ry(runs[runs.length - 1]).toFixed(1)}" r="3.5" fill="#a5b4fc"/>`;
+      }
+      points.forEach((p, i) => {
+        svg += `<rect class="hit" x="${pad.l + at(p, i) * bw}" y="${pad.t}" width="${bw}" height="${ih}" fill="transparent" data-go="${p.go || ""}"
           data-tip="${esc(`${p.label}<br><b class='${tone(p.v)}'>${money(p.v)}</b>${opts.line ? `<br><span class='muted'>running total</span> <b style='color:#a5b4fc'>${money(runs[i])}</b>` : ""}${p.tip ? `<br><span class='muted'>${p.tip}</span>` : ""}`)}"/>`;
       });
       svg += `<defs><linearGradient id="gUp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4ade80"/><stop offset="1" stop-color="#16a34a"/></linearGradient>
@@ -391,7 +401,7 @@
       return `<div class="card${m.pl < 0 ? " neg" : ""}" role="button" tabindex="0" data-go="${href(r.y, m.m)}"><div class="name">${MONTHS[+m.m.slice(5) - 1]}</div>
         <div class="total ${tone(m.pl)}">${money(m.pl)}</div>${cashBonus(m, m.rates)}<div class="meta">${plural(m.days.length, "day")}${m.full ? "" : " so far"}</div><div class="mcal">${cells}</div></div>`;
     }).join("");
-    const pts = ms.map((m) => ({ label: monthName(m.m), v: m.pl, go: href(r.y, m.m), axis: MONTHS[+m.m.slice(5) - 1].slice(0, 3) }));
+    const pts = ms.map((m) => ({ label: monthName(m.m), v: m.pl, go: href(r.y, m.m), slot: +m.m.slice(5) - 1 }));
     const html = `${steps(r)}<div class="hero"><div><div class="k">${full ? "Full year" : `So far · through ${mdy(D.through)}`}</div><div class="big ${tone(y.pl)}">${money(y.pl)}</div>
         <div class="sub">Cash ${M(y.cash)} · <span class="bonus">Bonus bets ${money(y.worth)}</span> <span class="muted">(${money(y.bonus, { plain: true, trim: true })} in bonus bets at ${esc(rateText(y.rates).replace(" value", ""))})</span></div></div>
         <div class="side"><div class="kv"><div class="k">Winning months</div><div class="v">${ms.filter((m) => m.pl > 0).length} of ${ms.length}</div></div>
@@ -400,7 +410,7 @@
       <div class="panel"><div class="ph"><div><h3>Each month · ${r.y}</h3><div class="s">${TAP} a month to open it</div></div></div><div data-chart-slot="months"></div></div>
       <div class="panel"><div class="ph"><div><h3>Sportsbooks · ${r.y}</h3></div></div>${booksTable(y.books, { head: String(r.y), flat: true })}${naNote(y.books)}</div>
       ${outsideNote(y)}`;
-    return { html, charts: { months: barChart(pts, { h: 260, label: `${r.y} by month` }) } };
+    return { html, charts: { months: barChart(pts, { h: 260, label: `${r.y} by month`, slots: 12, axis: (k) => MONTHS[k].slice(0, 3) }) } };
   }
 
   function viewMonth(r) {
@@ -421,7 +431,10 @@
     const by = Object.fromEntries(m.days.map((d) => [+d[0].slice(8), d])), max = Math.max(1, ...m.days.map((d) => Math.abs(d[1])));
     let cal = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((h) => `<div class="h">${h}</div>`).join("") + `<div class="h wkh">Week</div>`;
     let week = 0, wdays = 0, col = 0;
-    const flush = () => { cal += `<div class="wk"><div class="v ${tone(week)}">${money(week)}</div><div class="k">${wdays} day${wdays === 1 ? "" : "s"}</div></div>`; week = 0; wdays = 0; };
+    const flush = () => {  // (a week with no day logged yet stays empty: never "$0.00 · 0 days")
+      cal += wdays ? `<div class="wk"><div class="v ${tone(week)}">${money(week)}</div><div class="k">${wdays} day${wdays === 1 ? "" : "s"}</div></div>` : `<div class="wk"></div>`;
+      week = 0; wdays = 0;
+    };
     for (let i = 0; i < first; i++, col++) cal += `<div class="d empty"></div>`;
     for (let i = 1; i <= n; i++) {
       const d = by[i];
@@ -434,7 +447,7 @@
     }
     if (col % 7) { for (; col % 7; col++) cal += `<div class="d empty"></div>`; flush(); }
     let run = 0;
-    const pts = m.days.map((d) => ({ label: dayLong(d[0]), v: d[1] + d[2], go: href(r.y, r.m, d[0]), axis: (+d[0].slice(8) % 5 === 1 || m.days.length < 12) ? String(+d[0].slice(8)) : "", tip: d[3] ? plural(d[3], "bet") : "" }));
+    const pts = m.days.map((d) => ({ label: dayLong(d[0]), v: d[1] + d[2], go: href(r.y, r.m, d[0]), slot: +d[0].slice(8) - 1, tip: d[3] ? plural(d[3], "bet") : "" }));
     const yb = Object.fromEntries(y.books.map((b) => [b[0], b[1]]));
     const adjTotal = m.days.reduce((t, d) => t + cents(d[2]), 0) / 100;
     const html = `${steps(r)}<div class="mstrip">${strip}</div>
@@ -450,7 +463,8 @@
         ${booksTable(m.books, { head: MONTHS[+r.m.slice(5) - 1], flat: true, second: { head: String(r.y), of: (c) => yb[c] !== undefined ? M(yb[c]) : "", total: M(y.pl) } })}${naNote(m.books)}</div>
       <details class="everyday"><summary>Every day · ${esc(monthName(r.m))} (${m.days.length})</summary><div class="dlist">${m.days.map((d) => `<button data-go="${href(r.y, r.m, d[0])}"><span>${dayShort(d[0])}</span><b class="${tone(d[1])}">${money(d[1])}</b></button>`).join("")}</div></details>`;
     loadMonth(r.m).catch(() => {});  // ready for a day
-    return { html, charts: { days: barChart(pts, { line: true, h: 240, label: `${monthName(r.m)} by day` }) } };
+    return { html, charts: { days: barChart(pts, { line: true, h: 240, label: `${monthName(r.m)} by day`, slots: n,
+                                                   axis: (k) => (k === 0 || (k + 1) % 5 === 0 ? String(k + 1) : "") }) } };
   }
 
   function lineHtml(l) {
