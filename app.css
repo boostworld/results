@@ -416,22 +416,3 @@
   .outsum .os-row small { color: var(--faint); margin-left: 6px; font-size: 12px; }
   .outsum .os-row b { font-family: var(--display); font-variant-numeric: tabular-nums; }
   .outsum .os-row.tot { color: var(--text); font-weight: 600; background: rgba(148, 163, 184, .05); }
-  .tile .nb { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  /* the book tiles' text, three sizes to compare with today's in the same bubbles (?tiles=1|2|3; user, Nov 1: "just fill up more
-     of the bubbles with text ... not by a ton just use your space better ... give me some options and compare to what we have now") */
-  body[data-tiles="1"] .tile .t { font-size: 14px; }
-  body[data-tiles="1"] .tile .v { font-size: 23px; line-height: 1.2; }
-  body[data-tiles="1"] .tile .nb { font-size: 12.5px; }
-  body[data-tiles="2"] .tile { padding: 8px 12px 9px; }
-  body[data-tiles="2"] .tile .t { font-size: 15px; }
-  body[data-tiles="2"] .tile .v { font-size: 26px; line-height: 1.15; letter-spacing: -.01em; }
-  body[data-tiles="2"] .tile .nb { font-size: 13px; }
-  body[data-tiles="3"] .tile { padding: 8px 12px; }
-  body[data-tiles="3"] .tile .t { font-size: 16px; }
-  body[data-tiles="3"] .tile .v { font-size: 29px; line-height: 1.1; letter-spacing: -.015em; }
-  body[data-tiles="3"] .tile .nb { font-size: 13.5px; margin-top: 1px; }
-  @media (max-width: 820px) {
-    body[data-tiles="1"] .tile .t { font-size: 13px; } body[data-tiles="1"] .tile .v { font-size: 21px; }
-    body[data-tiles="2"] .tile .t { font-size: 13.5px; } body[data-tiles="2"] .tile .v { font-size: 23px; }
-    body[data-tiles="3"] .tile .t { font-size: 14px; } body[data-tiles="3"] .tile .v { font-size: 25px; }
-  }
