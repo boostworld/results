@@ -28,8 +28,17 @@
   const dayLong = (iso) => { const d = dt(iso); return `${WD[d.getUTCDay()]}, ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`; };
   const dayShort = (iso) => { const d = dt(iso); return `${WD[d.getUTCDay()].slice(0, 3)}, ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCDate()}`; };
   const pct = (r) => `${Math.round(r * 100)}%`;
+  // one rate, or the range a month / year spans as "60–70%" (Nov 9 audit: "60%–70%" broke over two lines on June / July 2022)
   const rateText = (rates) => !rates || !rates.length ? "" : rates.length === 1 ? `${pct(rates[0])} value`
-    : `${pct(Math.min(...rates))}–${pct(Math.max(...rates))} value`;
+    : `${Math.round(Math.min(...rates) * 100)}–${pct(Math.max(...rates))} value`;
+  // how long since his first day, as his own P/L page says it (pnl's plSince: whole months, a month not yet full not counted;
+  // Nov 9 audit: this page had counted both end months whole, "4 years, 10 months" where his page said 4 years, 9 months)
+  const sinceText = (from, to) => {
+    const [a, b] = [from, to].map((d) => d.split("-").map(Number));
+    const n = (b[0] - a[0]) * 12 + (b[1] - a[1]) - (b[2] < a[2] ? 1 : 0), y = Math.floor(n / 12), m = n % 12;
+    if (n < 1) return "under a month";
+    return [y ? `${y} year${y === 1 ? "" : "s"}` : "", m ? `${m} month${m === 1 ? "" : "s"}` : ""].filter(Boolean).join(", ");
+  };
   const bookName = (c) => (D.books[c] || {}).name || c;
   const bookColor = (c) => (D.books[c] || {}).color || "#94a3b8";
   const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
@@ -95,7 +104,7 @@
   function cashBonus(o, rates) {
     return `<div class="cb"><div class="row"><span>Cash</span><b class="${tone(o.cash)}">${money(o.cash)}</b></div>
       <div class="row"><span>Bonus bets</span><b class="bonus">${money(o.worth)}</b></div>
-      <div class="note">${money(o.bonus, { plain: true, trim: true })} in bonus bets, counted at ${esc(rateText(rates).replace(" value", ""))}</div></div>`;
+      <div class="note">${money(o.bonus, { plain: true, trim: true })} in bonus bets, <span class="nw">counted at ${esc(rateText(rates).replace(" value", ""))}</span></div></div>`;
   }
   function miniBars(values) {  // a year card's months: rounded bars from the bottom, a small month a dot, a losing one a red dot
     const max = Math.max(1, ...values);
@@ -156,13 +165,23 @@
       const W = Math.max(280, el.clientWidth || 900), H = opts.h || 280, pad = { l: 58, r: opts.line ? 58 : 10, t: 14, b: 30 };
       const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
       const vals = points.map((p) => p.v), maxUp = Math.max(0, ...vals), maxDn = Math.max(0, ...vals.map((v) => -v));
-      const span = maxUp + maxDn || 1, y0 = pad.t + ih * (maxUp / span), sc = ih / span;
       const slots = opts.slots || points.length, at = (p, i) => (opts.slots ? p.slot : i);
       const bw = iw / slots, gap = Math.min(6, bw * .22);
       let run = 0;
       const runs = points.map((p) => (run += p.v));
-      const rMax = Math.max(1, ...runs), rMin = Math.min(0, ...runs);
-      const ry = (v) => pad.t + ih * (1 - (v - rMin) / (rMax - rMin || 1));
+      const rMax = Math.max(0, ...runs), rMin = Math.min(0, ...runs);
+      // the bars and the running total share one $0 line (Nov 9 audit: the line had its own scale with $0 at the chart's foot,
+      // so a month up +$558.63 after day 1 was drawn under the bars' $0): where $0 sits is picked so both fit as large as they can
+      const share = (up, dn) => (up + dn ? up / (up + dn) : 1);  // (the part of the height a series needs above $0)
+      const fit = (f, up, dn) => Math.min(up ? f / share(up, dn) : 9, dn ? (1 - f) / (1 - share(up, dn)) : 9);
+      let f = share(maxUp, maxDn);
+      if (opts.line && (rMax || rMin)) {
+        let best = -1;
+        for (let k = 0; k <= 100; k++) { const g = k / 100, s = Math.min(fit(g, maxUp, maxDn), fit(g, rMax, -rMin)); if (s > best + 1e-9) { best = s; f = g; } }
+      }
+      const y0 = pad.t + ih * f, sc = Math.min(maxUp ? (ih * f) / maxUp : Infinity, maxDn ? (ih * (1 - f)) / maxDn : Infinity, maxUp || maxDn ? Infinity : 1);
+      const rs = Math.min(rMax ? (ih * f) / rMax : Infinity, rMin ? (ih * (1 - f)) / -rMin : Infinity, rMax || rMin ? Infinity : 1);
+      const ry = (v) => y0 - v * rs;
       const nice = (v) => (v < 0 ? "-" : "") + (Math.abs(v) >= 1000 ? `$${(Math.abs(v) / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)}k` : `$${Math.round(Math.abs(v))}`);
       let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || "chart")}">`;
       [maxUp, maxUp / 2, 0, -maxDn].filter((v, i, a) => (v || i === 2) && a.indexOf(v) === i).forEach((v) => {
@@ -170,7 +189,9 @@
         svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y}" y2="${y}" stroke="rgba(148,163,184,${v === 0 ? .32 : .09})" ${v === 0 ? "" : 'stroke-dasharray="3 5"'}/>
           <text x="${pad.l - 10}" y="${y + 4}" text-anchor="end">${v === 0 ? "$0" : (v < 0 ? "-" : "") + nice(Math.abs(v))}</text>`;
       });
-      if (opts.line) [rMax, (rMax + rMin) / 2].forEach((v) => { svg += `<text x="${W - pad.r + 8}" y="${ry(v) + 4}" fill="#a5b4fc" style="fill:#a5b4fc">${nice(v)}</text>`; });
+      // the running total's own axis on the right: its top, its $0 (the bars' $0 line), its low (a label too close to $0 left out)
+      if (opts.line) [0, rMax, rMin].filter((v, i) => i === 0 || (v && Math.abs(ry(v) - y0) >= 14)).forEach((v) => {
+        svg += `<text x="${W - pad.r + 8}" y="${ry(v) + 4}" fill="#a5b4fc" style="fill:#a5b4fc">${nice(v)}</text>`; });
       if (opts.axis) for (let k = 0; k < slots; k++) {
         const t = opts.axis(k);
         if (t) svg += `<text x="${pad.l + k * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(bw < 34 && /^[A-Z]/.test(t) ? t[0] : t)}</text>`;
@@ -336,7 +357,7 @@
   }
   function viewAll() {
     const years = D.years;
-    const yearsSpan = (() => { const a = dt(D.since), b = dt(D.through); const m = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1; return `${Math.floor(m / 12)} years, ${m % 12} months`; })();
+    const yearsSpan = sinceText(D.since, D.through);
     const cards = years.map((y) => {
       const ms = D.months.filter((m) => m.m.startsWith(`${y.y}-`));
       return `<button class="ycard${openYear === y.y ? " on" : ""}" data-year="${y.y}" aria-expanded="${openYear === y.y}"><div class="yh"><span class="yn">${y.y}</span>${CHEV}</div>
@@ -457,7 +478,8 @@
           <div class="kv small"><div class="k">${m.full ? `Overall P/L at the end of ${MONTHS[+r.m.slice(5) - 1]}` : `Overall P/L through ${mdy(last)}`}</div><div class="v ${tone(overallThen)}">${money(overallThen)}</div></div>
           <div class="split">Cash <b class="${tone(m.cash)}">${money(m.cash)}</b><br><span class="bonus">Bonus bets <b>${money(m.worth)}</b></span> <span class="muted">(${money(m.bonus, { plain: true, trim: true })} at ${esc(rateText(m.rates).replace(" value", ""))})</span></div></div></div>
       <div class="cal">${cal}</div>
-      ${cents(adjTotal) ? `<div class="dnote adjnote">Some days include a month adjustment (“adj.”), counted in that week and the month.</div>` : ""}
+      ${cents(adjTotal) ? (() => { const n = m.days.filter((d) => cents(d[2])).length;  // (also on a phone, where the squares hide "adj.": Nov 9 audit)
+        return `<div class="dnote adjnote">This month's total includes a month adjustment of ${M(adjTotal)}<span class="wide-only">, shown as “adj.” on ${n === 1 ? "its day and counted in that week" : "those days and counted in those weeks"}</span>.</div>`; })() : ""}
       <div class="panel"><div class="ph"><div><h3>Day by day · ${esc(monthName(r.m))}</h3><div class="s">${TAP} a day to open it · the line is the month's running total</div></div></div><div data-chart-slot="days"></div></div>
       <div class="panel"><div class="ph"><div><h3>Sportsbooks · ${esc(monthName(r.m))}</h3><div class="s wide-only">the right column is each book's ${r.y}</div></div></div>
         ${booksTable(m.books, { head: MONTHS[+r.m.slice(5) - 1], flat: true, second: { head: String(r.y), of: (c) => yb[c] !== undefined ? M(yb[c]) : "", total: M(y.pl) } })}${naNote(m.books)}</div>
@@ -484,6 +506,8 @@
     const codes = Object.keys(groups).sort((a, b) => idx(a) - idx(b) || groups[a][0][1] - groups[b][0][1]);
     const sortIn = (g) => g.slice().sort((a, b) => { const k = (l) => (cents(l[0]) > 0 || (!cents(l[0]) && cents(l[1]) > 0) ? 0 : !cents(l[0]) ? 1 : 2); return k(a[0]) - k(b[0]) || a[1] - b[1]; });
     const lines = codes.map((c) => `<div class="grp">${sortIn(groups[c]).map(([l]) => lineHtml(l)).join("")}</div>`).join("");
+    // the amount column as wide as the day's longest amount (Nov 9 audit: +$4,064.10 ran out of a phone's 64 px column)
+    const amtLen = Math.max(0, ...(day.lines || []).map((l) => (cents(l[0]) ? money(l[0], { trim: true }) : cents(l[1]) ? money(l[1], { trim: true }) : "$0").length));
     const pl = day.pl, won = cents(pl) >= 0;
     const cash = (day.lines || []).reduce((t, l) => t + cents(l[0]), 0) / 100, bonus = (day.lines || []).reduce((t, l) => t + cents(l[1]), 0) / 100;
     const paren = cents(bonus) ? ` <span class="paren">(${money(cash, { trim: true })}, <span class="bonus">${money(bonus, { trim: true })} bonus bets</span>)</span>` : "";
@@ -494,7 +518,7 @@
       <div class="dc-top"><div><div class="dc-brand">BOOST WORLD <span>DAILY P/L</span></div><div class="dc-date">${mdy(day.d)}</div><div class="dc-wd">${WD[dt(day.d).getUTCDay()]}</div></div>
         <div class="dc-res"><div class="w ${won ? "up" : "down"}">${cents(pl) > 0 ? "WON" : cents(pl) < 0 ? "LOST" : "EVEN"}</div><div class="a ${tone(pl)}">${money(pl)}</div></div></div>
       ${day.bets ? `<div class="chips"><span class="chip"><b>${day.bets}</b>${day.bets === 1 ? "bet" : "bets"}</span><span class="chip"><b class="up">${day.won}</b>won</span><span class="chip"><b class="down">${day.lost}</b>lost</span><span class="chip"><b>${nBooks}</b>book${nBooks === 1 ? "" : "s"}</span></div>` : ""}
-      ${day.lines && day.lines.length ? `<div class="lines">${lines}</div>` : `<div class="dnote">This day is its posted total; its bets weren't listed one by one.</div>`}
+      ${day.lines && day.lines.length ? `<div class="lines"${amtLen > 8 ? ` style="--an:${amtLen}"` : ""}>${lines}</div>` :`<div class="dnote">This day is its posted total; its bets weren't listed one by one.</div>`}
       <div class="result ${tone(pl)}">= ${cents(pl) >= 0 ? "Won" : "Lost"} ${money(Math.abs(pl), { plain: true, trim: true })}${day.lines && day.lines.length ? paren : ""}</div>
       <div class="eyebrow" style="margin-bottom:8px">Each book today</div><div class="tiles">${tiles}</div>
       ${(() => { const notes = [];
