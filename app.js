@@ -2,7 +2,7 @@
   "use strict";
   const app = document.getElementById("app"), tipEl = document.getElementById("tip");
   const embedded = window.parent !== window;
-  if (embedded) document.body.classList.add("embedded");
+  if (embedded) { document.body.classList.add("embedded"); document.documentElement.classList.add("embedded"); }
   let D = null;                      // data/pl.json
   const monthFiles = {};             // "2025-12" -> its days (data/m/2025-12.json)
   const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -590,7 +590,7 @@
       // the content's own height (Nov 1: documentElement.scrollHeight is never less than the frame itself, so the frame stayed
       // at its starting 1,800 px with a big empty gap under the page)
       const wrap = document.querySelector(".wrap");
-      const h = Math.ceil(wrap ? wrap.getBoundingClientRect().bottom + window.scrollY : document.body.scrollHeight);
+      const h = Math.ceil(wrap ? wrap.getBoundingClientRect().bottom + window.scrollY : document.body.scrollHeight) + 2;  // (+2: never a pixel short)
       if (Math.abs(h - lastH) > 2) { lastH = h; parent.postMessage({ type: "boostworld-pl-height", height: h }, "*"); }
     });
   }

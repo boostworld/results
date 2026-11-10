@@ -11,6 +11,10 @@
   html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.45;
     -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
   body.embedded { background: transparent; }
+  /* inside boostworld.us's frame the page never scrolls itself: the frame grows to fit it (user, Nov 9: "What is this white
+     scroll bar on the side of the chart ... I really do not like that"); dark controls if one ever shows */
+  html { color-scheme: dark; }
+  html.embedded, html.embedded body { overflow: hidden; }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
   a { color: inherit; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 40px; }
