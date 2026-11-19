@@ -492,7 +492,12 @@
   // a day as his Discord image draws it (Nov 18, his pick: "implement this into every screenshot for every day"): the date
   // and the result, the stats beside the weekday, the cash / bonus bets under the result; a box per book (its title bar in its
   // color, its bets and its day), then each book ranked best to worst as bars, then the month and the overall
-  const lightHex = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255 > 0.72; };
+  // (dark letters where they read better than white on the bar: Caesars, theScore, BetMGM, Fanatics; Nov 18, measured)
+  const lightHex = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), nv = [13, 20, 34];
+    const L = (r) => { const v = r.map((u) => { u /= 255; return u <= .03928 ? u / 12.92 : ((u + .055) / 1.055) ** 2.4; }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+    let w = 99, k = 99;
+    for (const a of [.88, .55]) { const lb = L(c.map((v, i) => a * v + (1 - a) * nv[i])); w = Math.min(w, 1.05 / (lb + .05)); k = Math.min(k, (lb + .05) / (L([11, 18, 32]) + .05)); }
+    return k > w; };
   function lineHtml(l) {
     const [cash, bonus, code, text, own] = l;
     const bb = money(bonus, { trim: true }).replace(/^\+/, "");
