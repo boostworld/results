@@ -489,38 +489,51 @@
                                                    axis: (k) => (k === 0 || (k + 1) % 5 === 0 ? String(k + 1) : "") }) } };
   }
 
+  // a day as his Discord image draws it (Nov 18, his pick: "implement this into every screenshot for every day"): the date
+  // and the result, the stats beside the weekday, the cash / bonus bets under the result; a box per book (its title bar in its
+  // color, its bets and its day), then each book ranked best to worst as bars, then the month and the overall
+  const lightHex = (hex) => { const n = parseInt(hex.slice(1), 16); return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255 > 0.72; };
   function lineHtml(l) {
     const [cash, bonus, code, text, own] = l;
     const bb = money(bonus, { trim: true }).replace(/^\+/, "");
     const amt = cents(cash) ? money(cash, { trim: true }) : cents(bonus) ? "" : "$0";
-    const sub = cents(bonus) ? (cents(cash) < 0 ? `↳ +${bb} back in bonus bets` : cents(cash) > 0 ? `↳ +${bb} in bonus bets` : "") : "";
+    const sub = cents(bonus) ? (cents(cash) < 0 ? `↳ +${bb} back in bonus bets` : cents(cash) > 0 ? `↳ +${bb} in bonus bets` : "↳ paid in bonus bets") : "";
     const main = !cents(cash) && cents(bonus) ? `<span class="bonus">+${bb}</span>` : `<span class="${tone(cash)}">${amt}</span>`;
-    const c = bookColor(code);
-    return `<div class="line${own ? " own" : ""}"><span class="amt">${main}</span><span class="badge" style="background:${rgba(c, .16)};color:${c};border:1px solid ${rgba(c, .35)}">${esc(code === "NB" ? "—" : code)}</span>
-      <span class="tx">${esc(text)}${!cents(cash) && cents(bonus) ? `<span class="sub" style="display:block">↳ paid in bonus bets</span>` : ""}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</div>`;
+    return `<div class="line${own ? " own" : ""}"><span class="amt">${main}</span><span class="tx">${esc(text)}${sub ? `<span class="sub">${sub}</span>` : ""}</span></div>`;
   }
   function dayCard(day, row) {
     const order = D.order, idx = (c) => { const i = order.indexOf(c); return i < 0 ? 100 : i; };
     const groups = {};
     (day.lines || []).forEach((l, i) => (groups[l[2]] = groups[l[2]] || []).push([l, i]));
-    const codes = Object.keys(groups).sort((a, b) => idx(a) - idx(b) || groups[a][0][1] - groups[b][0][1]);
-    const sortIn = (g) => g.slice().sort((a, b) => { const k = (l) => (cents(l[0]) > 0 || (!cents(l[0]) && cents(l[1]) > 0) ? 0 : !cents(l[0]) ? 1 : 2); return k(a[0]) - k(b[0]) || a[1] - b[1]; });
-    const lines = codes.map((c) => `<div class="grp">${sortIn(groups[c]).map(([l]) => lineHtml(l)).join("")}</div>`).join("");
-    // the amount column as wide as the day's longest amount (Nov 9 audit: +$4,064.10 ran out of a phone's 64 px column)
+    const codes = Object.keys(groups).sort((a, b) => (a === "NB") - (b === "NB") || idx(a) - idx(b) || groups[a][0][1] - groups[b][0][1]);
+    const sortIn = (g) => g.slice().sort((a, b) => { const k = (l) => (l[4] ? 3 : cents(l[0]) > 0 || (!cents(l[0]) && cents(l[1]) > 0) ? 0 : !cents(l[0]) ? 1 : 2); return k(a[0]) - k(b[0]) || a[1] - b[1]; });
+    const bookDay = Object.fromEntries((day.books || []).map((b) => [b[0], b[1]]));
+    const nameOf = (c) => (c === "NB" ? "No book written" : c === "N/A" ? "N/A" : bookName(c));
     const amtLen = Math.max(0, ...(day.lines || []).map((l) => (cents(l[0]) ? money(l[0], { trim: true }) : cents(l[1]) ? money(l[1], { trim: true }) : "$0").length));
+    const secs = codes.map((c) => {
+      const col = c === "NB" ? "#94a3b8" : bookColor(c), dark = lightHex(col), rows = sortIn(groups[c]), n = rows.filter(([l]) => !l[4]).length;
+      const tot = bookDay[c] !== undefined ? bookDay[c] : rows.reduce((t, [l]) => t + cents(l[0]), 0) / 100;
+      return `<div class="sec" style="border-color:${rgba(col, .6)}"><div class="sh" style="background:linear-gradient(90deg,${rgba(col, .88)},${rgba(col, .55)})">
+          <span class="nm"${dark ? ' style="color:#0b1220"' : ""}>${esc(nameOf(c))}</span>${n ? `<span class="n"${dark ? ' style="color:rgba(11,18,32,.82)"' : ""}>${plural(n, "bet")}</span>` : ""}<span class="pill ${tone(tot)}">${money(tot, { trim: true })}</span></div>
+        <div class="rows">${rows.map(([l]) => lineHtml(l)).join("")}</div></div>`;
+    }).join("");
     const pl = day.pl, won = cents(pl) >= 0;
     const cash = (day.lines || []).reduce((t, l) => t + cents(l[0]), 0) / 100, bonus = (day.lines || []).reduce((t, l) => t + cents(l[1]), 0) / 100;
-    const paren = cents(bonus) ? ` <span class="paren">(${money(cash, { trim: true })}, <span class="bonus">${money(bonus, { trim: true })} bonus bets</span>)</span>` : "";
-    const tiles = day.books.map((b) => b[0] === "N/A" ? `<div class="tile na"><div class="t">N/A</div><div class="v">${money(b[1], { trim: true })}</div></div>`
-      : `<div class="tile"><div class="t" style="color:${bookColor(b[0])}">${esc(bookName(b[0]) === b[0] ? b[0] : `${bookName(b[0])} (${b[0]})`)}</div><div class="v ${tone(b[1])}">${money(b[1], { trim: true })}</div></div>`).join("");
-    const nBooks = day.books.filter((b) => b[0] !== "N/A" && b[0] !== "NB").length;
+    const paren = cents(bonus) && day.lines && day.lines.length ? `<div class="paren">(<span class="${tone(cash)}">${money(cash, { trim: true })}</span>, <span class="bonus">${money(bonus, { trim: true })} bonus bets</span>)</div>` : "";
+    // each book today, best to worst (N/A last): a numbered bar each, one scale
+    const rank = (day.books || []).slice().sort((p, q) => (p[0] === "N/A") - (q[0] === "N/A") || q[1] - p[1]);
+    const big = Math.max(0.01, ...rank.map((b) => Math.abs(b[1])));
+    const bars = rank.map((b, i) => { const col = b[0] === "N/A" || b[0] === "NB" ? "#94a3b8" : bookColor(b[0]);
+      return `<div class="rk"><span class="no">${i + 1}</span><span class="bn" style="color:${col}">${esc(nameOf(b[0]))}</span>
+        <span class="track"><span class="fill ${tone(b[1])}" style="width:${Math.max(3, Math.abs(b[1]) / big * 100).toFixed(1)}%"></span></span><span class="bv ${tone(b[1])}">${money(b[1], { trim: true })}</span></div>`; }).join("");
+    const nBooks = (day.books || []).filter((b) => b[0] !== "N/A" && b[0] !== "NB").length;
     return `<div class="daycard${won ? "" : " neg"} fade">
-      <div class="dc-top"><div><div class="dc-brand">BOOST WORLD <span>DAILY P/L</span></div><div class="dc-date">${mdy(day.d)}</div><div class="dc-wd">${WD[dt(day.d).getUTCDay()]}</div></div>
-        <div class="dc-res"><div class="w ${won ? "up" : "down"}">${cents(pl) > 0 ? "WON" : cents(pl) < 0 ? "LOST" : "EVEN"}</div><div class="a ${tone(pl)}">${money(pl)}</div></div></div>
-      ${day.bets ? `<div class="chips"><span class="chip"><b>${day.bets}</b>${day.bets === 1 ? "bet" : "bets"}</span><span class="chip"><b class="up">${day.won}</b>won</span><span class="chip"><b class="down">${day.lost}</b>lost</span><span class="chip"><b>${nBooks}</b>book${nBooks === 1 ? "" : "s"}</span></div>` : ""}
-      ${day.lines && day.lines.length ? `<div class="lines"${amtLen > 8 ? ` style="--an:${amtLen}"` : ""}>${lines}</div>` :`<div class="dnote">This day is its posted total; its bets weren't listed one by one.</div>`}
-      <div class="result ${tone(pl)}">= ${cents(pl) >= 0 ? "Won" : "Lost"} ${money(Math.abs(pl), { plain: true, trim: true })}${day.lines && day.lines.length ? paren : ""}</div>
-      <div class="eyebrow" style="margin-bottom:8px">Each book today</div><div class="tiles">${tiles}</div>
+      <div class="dc-brand">BOOST WORLD <span>DAILY P/L</span></div>
+      <div class="dc-top"><div><div class="dc-date">${mdy(day.d)}</div>
+          <div class="dc-sub"><span class="dc-wd">${WD[dt(day.d).getUTCDay()]}</span>${day.bets ? `<span class="chips"><span class="chip"><b>${day.bets}</b>${day.bets === 1 ? "bet" : "bets"}</span><span class="chip"><b class="up">${day.won}</b>won</span><span class="chip"><b class="down">${day.lost}</b>lost</span><span class="chip"><b>${nBooks}</b>book${nBooks === 1 ? "" : "s"}</span></span>` : ""}</div></div>
+        <div class="dc-res"><div class="w ${won ? "up" : "down"}">${cents(pl) > 0 ? "WON" : cents(pl) < 0 ? "LOST" : "EVEN"}</div><div class="a ${tone(pl)}">${money(pl)}</div>${paren}</div></div>
+      ${day.lines && day.lines.length ? `<div class="secs"${amtLen > 8 ? ` style="--an:${amtLen}"` : ""}>${secs}</div>` : `<div class="dnote">This day is its posted total; its bets weren't listed one by one.</div>`}
+      ${rank.length ? `<div class="eyebrow rk-h">Each book today · best to worst</div><div class="ranks" style="--rr:${Math.ceil(rank.length / 2)}">${bars}</div>` : ""}
       ${(() => { const notes = [];
         if (cents(row[2])) notes.push(`Month adjustment ${money(row[2])}, counted in the month's total.`);
         D.years.flatMap((x) => x.outside || []).filter((o) => o.d === day.d && o.book).forEach((o) =>
@@ -528,7 +541,7 @@
         return notes.length ? `<div class="dnote">${notes.join("<br>")}</div>` : ""; })()}
       <div class="boxes"><div class="box${day.md < 0 ? " neg" : ""}"><div class="k">${MONTHS[+day.d.slice(5, 7) - 1]} P/L</div><div class="v ${tone(day.md)}">${money(day.md)}</div></div>
         <div class="box${day.od < 0 ? " neg" : ""}"><div class="k">Overall P/L through ${mdy(day.d)}</div><div class="v ${tone(day.od)}">${money(day.od)}</div></div></div>
-      <div class="dc-foot">Bonus bets counted at ${pct(day.rate)} of their value</div></div>`;
+      ${cents(bonus) ? `<div class="dc-foot">Bonus bets counted at ${pct(day.rate)} of their value</div>` : ""}</div>`;
   }
   function viewDay(r) {
     const m = monthOf(r.m), row = dayRow(r.d), max = Math.max(1, ...m.days.map((d) => Math.abs(d[1])));

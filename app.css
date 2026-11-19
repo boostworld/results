@@ -432,3 +432,36 @@
   .outsum .os-row small { color: var(--faint); margin-left: 6px; font-size: 12px; }
   .outsum .os-row b { font-family: var(--display); font-variant-numeric: tabular-nums; }
   .outsum .os-row.tot { color: var(--text); font-weight: 600; background: rgba(148, 163, 184, .05); }
+
+  /* the day card as his Discord image (Nov 18): a box per book, its title bar in its color; each book ranked as a bar */
+  .daycard .dc-brand { margin-bottom: 4px; }
+  .dc-sub { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .dc-sub .dc-wd { margin: 0; }
+  .dc-sub .chips { margin: 0; }
+  .dc-res .paren { color: var(--muted); font-weight: 700; font-size: 16px; margin-top: 4px; }
+  .secs { columns: 2; column-gap: 18px; margin-top: 20px; }
+  .sec { break-inside: avoid; border: 1px solid; border-radius: 14px; overflow: hidden; background: rgba(255, 255, 255, .025); margin-bottom: 14px; }
+  .sec .sh { display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 16px; }
+  .sec .sh .nm { flex: 1; min-width: 0; color: #fff; font-family: var(--display); font-weight: 700; font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sec .sh .n { color: rgba(255, 255, 255, .9); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .sec .sh .pill { background: rgba(6, 10, 20, .6); border-radius: 99px; padding: 3px 11px; font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .sec .rows { padding: 5px; display: grid; gap: 2px; }
+  .sec .line { grid-template-columns: max(76px, calc(var(--an, 0) * .6em)) 1fr; padding: 8px 10px; }
+  .sec .line:nth-child(odd) { background: rgba(255, 255, 255, .06); }
+  .sec .line:nth-child(even) { background: rgba(255, 255, 255, .02); }
+  .sec .line .sub { display: block; grid-column: auto; margin-top: 2px; }
+  .rk-h { margin: 6px 0 8px; }
+  .ranks { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(var(--rr, 6), auto); column-gap: 18px; row-gap: 3px; }
+  .rk { display: grid; grid-template-columns: 22px 116px minmax(40px, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; }  /* (the bars all start in one place) */
+  .rk:nth-child(odd) { background: rgba(255, 255, 255, .035); }
+  .rk .no { color: var(--faint); font-weight: 800; text-align: right; font-size: 13.5px; }
+  .rk .bn { font-family: var(--display); font-weight: 700; font-size: 16.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rk .track { height: 10px; border-radius: 6px; background: rgba(148, 163, 184, .08); overflow: hidden; }
+  .rk .fill { display: block; height: 100%; border-radius: 6px; }
+  .rk .fill.up { background: rgba(52, 211, 153, .7); } .rk .fill.down { background: rgba(248, 113, 113, .7); } .rk .fill.flat { background: rgba(148, 163, 184, .5); }
+  .rk .bv { font-family: var(--display); font-weight: 700; font-size: 16px; text-align: right; white-space: nowrap; }
+  @media (max-width: 640px) {
+    .secs { columns: 1; }
+    .ranks { grid-template-columns: 1fr; grid-auto-flow: row; grid-template-rows: none; }
+    .dc-res .paren { font-size: 14px; }
+  }
