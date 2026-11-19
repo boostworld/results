@@ -596,7 +596,12 @@
     if (lastLevelKey !== null && key !== lastLevelKey) {
       // to the view under the chart ("take them down to ... the calendar ... but actually leave the graph still above"): the frame
       // gets how far down this page it starts (offset); boostworld.us scrolls to it
-      if (embedded) parent.postMessage({ type: "boostworld-pl-top", offset: Math.round(app.getBoundingClientRect().top + window.scrollY) }, "*");
+      // (Nov 19, his: "it doesn't scroll quite as far down as I'd like ... I don't need that leftover bottom part of the other box":
+      // boostworld.us's own scroll puts the offset 40 px under its header on a computer (10 on a phone, its script read), so the
+      // climb box's bottom edge showed above the "All time › 2026 › ..." row; on a computer the offset is 24 px further, the row
+      // 16 px under the header)
+      const navEl = app.querySelector(".nav") || app, extra = window.innerWidth > 820 ? 24 : 0;
+      if (embedded) parent.postMessage({ type: "boostworld-pl-top", offset: Math.round(navEl.getBoundingClientRect().top + window.scrollY + extra) }, "*");
       else app.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     lastLevelKey = key;
