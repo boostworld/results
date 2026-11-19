@@ -501,6 +501,7 @@
   // every name white: a light book color a shade deeper on its bar (Nov 18, his pick, as the Discord image)
   const barHex = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), hx = (v) => Math.round(v).toString(16).padStart(2, "0");
     let h2 = hex, t = 0; while (lightHex(h2) && t < 0.8) { t += 0.04; h2 = `#${hx(c[0] * (1 - t))}${hx(c[1] * (1 - t))}${hx(c[2] * (1 - t))}`; } return h2; };
+  const whiter = (hex, f) => "#" + [1, 3, 5].map((i) => { const v = parseInt(hex.slice(i, i + 2), 16); return Math.round(v + (255 - v) * f).toString(16).padStart(2, "0"); }).join("");
   const textHex = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), hx = (v) => Math.round(v).toString(16).padStart(2, "0");
     const L = (r) => { const v = r.map((u) => { u /= 255; return u <= .03928 ? u / 12.92 : ((u + .055) / 1.055) ** 2.4; }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
     let f = 0, m = c; while ((L(m) + .05) / (L([13, 20, 34]) + .05) < 3.6 && f < 0.9) { f += 0.05; m = c.map((v) => v + (255 - v) * f); }
@@ -525,7 +526,7 @@
     const secs = codes.map((c) => {
       const col = barHex(c === "NB" ? "#94a3b8" : bookColor(c)), dark = lightHex(col), rows = sortIn(groups[c]), n = rows.filter(([l]) => !l[4]).length;
       const tot = bookDay[c] !== undefined ? bookDay[c] : rows.reduce((t, [l]) => t + cents(l[0]), 0) / 100;
-      return `<div class="sec" style="border-color:${rgba(col, .6)}"><div class="sh" style="background:linear-gradient(90deg,${rgba(col, .8)},${rgba(col, .34)})">
+      return `<div class="sec" style="border-color:${rgba(col, .6)}"><div class="sh" style="background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.08) 45%,rgba(0,0,0,.42)),linear-gradient(180deg,${rgba(whiter(col, .13), .9)},${rgba(col, .56)});box-shadow:inset 0 1.5px 0 rgba(255,255,255,.2)">
           <span class="nm"${dark ? ' style="color:#0b1220"' : ""}>${esc(nameOf(c))}</span>${n ? `<span class="n"${dark ? ' style="color:rgba(11,18,32,.82)"' : ""}>${plural(n, "bet")}</span>` : ""}<span class="bpill ${tone(tot)}">${money(tot, { trim: true })}</span></div>
         <div class="rows">${rows.map(([l]) => lineHtml(l)).join("")}</div></div>`;
     }).join("");
