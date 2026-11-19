@@ -444,9 +444,9 @@
   .secs > .sec { break-inside: avoid; border: 1px solid; border-radius: 14px; overflow: hidden; background: rgba(255, 255, 255, .025); margin-bottom: 14px; }
   .secs > .sec .sh { display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 16px; }
   .secs > .sec .sh .nm { flex: 1; min-width: 0; color: #fff; font-family: var(--display); font-weight: 700; font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .secs > .sec .sh .n { color: rgba(255, 255, 255, .9); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .secs > .sec .sh .n { color: rgba(255, 255, 255, .95); font-size: 15.5px; font-weight: 700; white-space: nowrap; }  /* (bigger, Nov 18, as the image) */
   /* (a book's day, green / red: its own class, the navigation .pill had made it gray, Nov 18) */
-  .secs > .sec .sh .bpill { background: rgba(6, 10, 20, .6); border-radius: 99px; padding: 3px 11px; font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .secs > .sec .sh .bpill { background: rgba(6, 10, 20, .62); border-radius: 99px; padding: 3px 12px; font-family: var(--display); font-weight: 800; font-size: 18px; white-space: nowrap; }
   .secs > .sec .rows { padding: 5px; display: grid; gap: 2px; }
   .secs > .sec .line { grid-template-columns: max(76px, calc(var(--an, 0) * .6em)) 1fr; padding: 8px 10px; }
   .secs > .sec .line:nth-child(odd) { background: rgba(255, 255, 255, .06); }
