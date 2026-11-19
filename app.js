@@ -525,7 +525,7 @@
     const secs = codes.map((c) => {
       const col = barHex(c === "NB" ? "#94a3b8" : bookColor(c)), dark = lightHex(col), rows = sortIn(groups[c]), n = rows.filter(([l]) => !l[4]).length;
       const tot = bookDay[c] !== undefined ? bookDay[c] : rows.reduce((t, [l]) => t + cents(l[0]), 0) / 100;
-      return `<div class="sec" style="border-color:${rgba(col, .6)}"><div class="sh" style="background:linear-gradient(90deg,${rgba(col, .88)},${rgba(col, .55)})">
+      return `<div class="sec" style="border-color:${rgba(col, .6)}"><div class="sh" style="background:linear-gradient(90deg,${rgba(col, .8)},${rgba(col, .34)})">
           <span class="nm"${dark ? ' style="color:#0b1220"' : ""}>${esc(nameOf(c))}</span>${n ? `<span class="n"${dark ? ' style="color:rgba(11,18,32,.82)"' : ""}>${plural(n, "bet")}</span>` : ""}<span class="bpill ${tone(tot)}">${money(tot, { trim: true })}</span></div>
         <div class="rows">${rows.map(([l]) => lineHtml(l)).join("")}</div></div>`;
     }).join("");
