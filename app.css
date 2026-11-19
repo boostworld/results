@@ -440,16 +440,18 @@
   .dc-sub .chips { margin: 0; }
   .dc-res .paren { color: var(--muted); font-weight: 700; font-size: 16px; margin-top: 4px; }
   .secs { columns: 2; column-gap: 18px; margin-top: 20px; }
-  .sec { break-inside: avoid; border: 1px solid; border-radius: 14px; overflow: hidden; background: rgba(255, 255, 255, .025); margin-bottom: 14px; }
-  .sec .sh { display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 16px; }
-  .sec .sh .nm { flex: 1; min-width: 0; color: #fff; font-family: var(--display); font-weight: 700; font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sec .sh .n { color: rgba(255, 255, 255, .9); font-size: 13px; font-weight: 600; white-space: nowrap; }
-  .sec .sh .pill { background: rgba(6, 10, 20, .6); border-radius: 99px; padding: 3px 11px; font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; }
-  .sec .rows { padding: 5px; display: grid; gap: 2px; }
-  .sec .line { grid-template-columns: max(76px, calc(var(--an, 0) * .6em)) 1fr; padding: 8px 10px; }
-  .sec .line:nth-child(odd) { background: rgba(255, 255, 255, .06); }
-  .sec .line:nth-child(even) { background: rgba(255, 255, 255, .02); }
-  .sec .line .sub { display: block; grid-column: auto; margin-top: 2px; }
+  /* (the day card's book sections only: a bare .sec had also boxed the sportsbooks table's td.sec cells, Nov 18) */
+  .secs > .sec { break-inside: avoid; border: 1px solid; border-radius: 14px; overflow: hidden; background: rgba(255, 255, 255, .025); margin-bottom: 14px; }
+  .secs > .sec .sh { display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 16px; }
+  .secs > .sec .sh .nm { flex: 1; min-width: 0; color: #fff; font-family: var(--display); font-weight: 700; font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .secs > .sec .sh .n { color: rgba(255, 255, 255, .9); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  /* (a book's day, green / red: its own class, the navigation .pill had made it gray, Nov 18) */
+  .secs > .sec .sh .bpill { background: rgba(6, 10, 20, .6); border-radius: 99px; padding: 3px 11px; font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .secs > .sec .rows { padding: 5px; display: grid; gap: 2px; }
+  .secs > .sec .line { grid-template-columns: max(76px, calc(var(--an, 0) * .6em)) 1fr; padding: 8px 10px; }
+  .secs > .sec .line:nth-child(odd) { background: rgba(255, 255, 255, .06); }
+  .secs > .sec .line:nth-child(even) { background: rgba(255, 255, 255, .02); }
+  .secs > .sec .line .sub { display: block; grid-column: auto; margin-top: 2px; }
   .rk-h { margin: 6px 0 8px; }
   .ranks { display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(var(--rr, 6), auto); column-gap: 18px; row-gap: 3px; }
   .rk { display: grid; grid-template-columns: 22px 116px minmax(40px, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; }  /* (the bars all start in one place) */

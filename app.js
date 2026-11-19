@@ -104,7 +104,7 @@
   function cashBonus(o, rates) {
     return `<div class="cb"><div class="row"><span>Cash</span><b class="${tone(o.cash)}">${money(o.cash)}</b></div>
       <div class="row"><span>Bonus bets</span><b class="bonus">${money(o.worth)}</b></div>
-      <div class="note">${money(o.bonus, { plain: true, trim: true })} in bonus bets, <span class="nw">counted at ${esc(rateText(rates).replace(" value", ""))}</span></div></div>`;
+      <div class="note">${money(o.bonus, { plain: true, trim: true })} in bonus bets, <span class="nw">tracked at ${esc(rateText(rates).replace(" value", ""))}</span></div></div>`;
   }
   function miniBars(values) {  // a year card's months: rounded bars from the bottom, a small month a dot, a losing one a red dot
     const max = Math.max(1, ...values);
@@ -424,7 +424,7 @@
     }).join("");
     const pts = ms.map((m) => ({ label: monthName(m.m), v: m.pl, go: href(r.y, m.m), slot: +m.m.slice(5) - 1 }));
     const html = `${steps(r)}<div class="hero"><div><div class="k">${full ? "Full year" : `So far · through ${mdy(D.through)}`}</div><div class="big ${tone(y.pl)}">${money(y.pl)}</div>
-        <div class="sub">Cash ${M(y.cash)} · <span class="bonus">Bonus bets ${money(y.worth)}</span> <span class="muted">(${money(y.bonus, { plain: true, trim: true })} in bonus bets at ${esc(rateText(y.rates).replace(" value", ""))})</span></div></div>
+        <div class="sub">Cash ${M(y.cash)} · <span class="bonus">Bonus bets ${money(y.worth)}</span> <span class="muted">(${money(y.bonus, { plain: true, trim: true })} in bonus bets tracked at ${esc(rateText(y.rates).replace(" value", ""))})</span></div></div>
         <div class="side"><div class="kv"><div class="k">Winning months</div><div class="v">${ms.filter((m) => m.pl > 0).length} of ${ms.length}</div></div>
         <div class="kv"><div class="k">${full ? `Overall P/L at the end of ${r.y}` : "Overall P/L to date"}</div><div class="v ${tone(overallThen)}">${money(overallThen)}</div></div></div></div>
       <div class="cards months">${cards}</div>
@@ -476,7 +476,7 @@
         <div class="sub">${plural(m.days.length, "day")} · ${ups} up · ${downs} down</div></div>
         <div class="side"><div class="kv small"><div class="k">${r.y} through ${MONTHS[+r.m.slice(5) - 1].slice(0, 3)}</div><div class="v ${tone(ytdThen)}">${money(ytdThen)}</div></div>
           <div class="kv small"><div class="k">${m.full ? `Overall P/L at the end of ${MONTHS[+r.m.slice(5) - 1]}` : `Overall P/L through ${mdy(last)}`}</div><div class="v ${tone(overallThen)}">${money(overallThen)}</div></div>
-          <div class="split">Cash <b class="${tone(m.cash)}">${money(m.cash)}</b><br><span class="bonus">Bonus bets <b>${money(m.worth)}</b></span> <span class="muted">(${money(m.bonus, { plain: true, trim: true })} at ${esc(rateText(m.rates).replace(" value", ""))})</span></div></div></div>
+          <div class="split">Cash <b class="${tone(m.cash)}">${money(m.cash)}</b><br><span class="bonus">Bonus bets <b>${money(m.worth)}</b></span> <span class="muted">(${money(m.bonus, { plain: true, trim: true })} tracked at ${esc(rateText(m.rates).replace(" value", ""))})</span></div></div></div>
       <div class="cal">${cal}</div>
       ${cents(adjTotal) ? (() => { const n = m.days.filter((d) => cents(d[2])).length;  // (also on a phone, where the squares hide "adj.": Nov 9 audit)
         return `<div class="dnote adjnote">This month's total includes a month adjustment of ${M(adjTotal)}<span class="wide-only">, shown as “adj.” on ${n === 1 ? "its day and counted in that week" : "those days and counted in those weeks"}</span>.</div>`; })() : ""}
@@ -526,7 +526,7 @@
       const col = barHex(c === "NB" ? "#94a3b8" : bookColor(c)), dark = lightHex(col), rows = sortIn(groups[c]), n = rows.filter(([l]) => !l[4]).length;
       const tot = bookDay[c] !== undefined ? bookDay[c] : rows.reduce((t, [l]) => t + cents(l[0]), 0) / 100;
       return `<div class="sec" style="border-color:${rgba(col, .6)}"><div class="sh" style="background:linear-gradient(90deg,${rgba(col, .88)},${rgba(col, .55)})">
-          <span class="nm"${dark ? ' style="color:#0b1220"' : ""}>${esc(nameOf(c))}</span>${n ? `<span class="n"${dark ? ' style="color:rgba(11,18,32,.82)"' : ""}>${plural(n, "bet")}</span>` : ""}<span class="pill ${tone(tot)}">${money(tot, { trim: true })}</span></div>
+          <span class="nm"${dark ? ' style="color:#0b1220"' : ""}>${esc(nameOf(c))}</span>${n ? `<span class="n"${dark ? ' style="color:rgba(11,18,32,.82)"' : ""}>${plural(n, "bet")}</span>` : ""}<span class="bpill ${tone(tot)}">${money(tot, { trim: true })}</span></div>
         <div class="rows">${rows.map(([l]) => lineHtml(l)).join("")}</div></div>`;
     }).join("");
     const pl = day.pl, won = cents(pl) >= 0;
@@ -553,7 +553,7 @@
         return notes.length ? `<div class="dnote">${notes.join("<br>")}</div>` : ""; })()}
       <div class="boxes"><div class="box${day.md < 0 ? " neg" : ""}"><div class="k">${MONTHS[+day.d.slice(5, 7) - 1]} P/L</div><div class="v ${tone(day.md)}">${money(day.md)}</div></div>
         <div class="box${day.od < 0 ? " neg" : ""}"><div class="k">Overall P/L through ${mdy(day.d)}</div><div class="v ${tone(day.od)}">${money(day.od)}</div></div></div>
-      ${cents(bonus) ? `<div class="dc-foot">Bonus bets counted at ${pct(day.rate)} of their value</div>` : ""}</div>`;
+      ${cents(bonus) ? `<div class="dc-foot">Bonus bets tracked conservatively at ${pct(day.rate)} value</div>` : ""}</div>`;
   }
   function viewDay(r) {
     const m = monthOf(r.m), row = dayRow(r.d), max = Math.max(1, ...m.days.map((d) => Math.abs(d[1])));
