@@ -125,7 +125,7 @@
       const fill = cents(r[1]) >= 0 ? `left:${zero.toFixed(2)}%;width:${(pos ? (r[1] / pos) * room : 0).toFixed(2)}%;background:linear-gradient(90deg,#16a34a,#4ade80)`
         : `right:${room.toFixed(2)}%;width:${(neg ? (-r[1] / neg) * zero : 0).toFixed(2)}%;background:linear-gradient(90deg,#fb7185,#ef4444)`;
       const open = opts.more ? `<tr class="more" data-more="${esc(r[0])}" hidden><td colspan="${opts.second ? 5 : 4}">${opts.more(r)}</td></tr>` : "";
-      return `<tr class="row ${cls}" data-book="${esc(r[0])}"><td><span class="bk"><span class="dot" style="background:${bookColor(r[0])}"></span>${esc(r[0] === "N/A" ? "N/A" : bookName(r[0]))}</span></td>
+      return `<tr class="row ${cls}" data-book="${esc(r[0])}"><td><span class="bk"><span class="dot" style="background:${bookColor(r[0])}"></span>${esc(r[0] === "N/A" ? NA_NAME : bookName(r[0]))}</span></td>
         <td class="wide-only"><div class="track"><span class="fill" style="${fill}"></span></div></td>
         <td class="r amt ${tone(r[1])}">${money(r[1])}</td>${opts.second ? `<td class="r sec">${opts.second.of(r[0])}</td>` : ""}
         <td class="r sec">${r[2] ? r[2].toLocaleString("en-US") : ""}</td></tr>${open}`;
@@ -368,7 +368,7 @@
       <div class="ycards">${cards}</div>${openYear ? yearPanel(yearOf(openYear)) : ""}
       <details class="panel drop"><summary><div><h3>Every sportsbook · all time</h3><div class="s">${D.all_books.filter((b) => b[0] !== "N/A").length} books<span class="when-closed"> · ${TAP} to open</span></div></div>${CHEV}</summary>
         ${booksTable(D.all_books, { head: "All time", flat: true, more: (r) => {
-          if (r[0] === "N/A") return naLedger();
+          if (r[0] === "N/A") return naLedger(true);
           const ys = D.years.map((y) => [y.y, (y.books.find((b) => b[0] === r[0]) || [])[1]]).filter((x) => x[1] !== undefined);
           const span = (D.books[r[0]] || {}).span || [];
           return `<div class="yrs">${ys.map(([y, v]) => `<span>${y} ${M(v)}</span>`).join("")}${span[0] ? `<span class="muted">${mdy(span[0])} – ${mdy(span[1])}</span>` : ""}</div>`;
@@ -382,11 +382,18 @@
     const c = cents(v), dollars = `${c > 0 ? "+" : c < 0 ? "-" : ""}$${Math.floor(Math.abs(c) / 100)}`;
     return `<b style="--n:${dollars.length}">${dollars}</b><i>.${String(Math.abs(c) % 100).padStart(2, "0")}</i>`;
   };
-  const naNote = (rows) => rows.some((b) => b[0] === "N/A" && cents(b[1])) ? `<div class="dnote na-note">N/A: ${naLedger().replace(/<[^>]+>/g, "")}</div>` : "";
+  const naNote = (rows) => rows.some((b) => b[0] === "N/A" && cents(b[1])) ? `<div class="dnote na-note">${NA_NAME}: ${naLedger().replace(/<[^>]+>/g, "")}</div>` : "";
   // N/A in one calm line (user, Nov 1: "very transparent ... but I also don't want it to look like I made too many errors ... as
-  // much as we can do to be vague about the NA"); its pieces stay in the log on his PC
-  function naLedger() {
-    return `<div class="naled"><p>Amounts recorded as a day's or month's total rather than to one sportsbook. They're included in every total.</p></div>`;
+  // much as we can do to be vague about the NA"); its pieces stay in the log on his PC. Shown as "Unassigned" with how small it
+  // is (his pick, Nov 19: the old "recorded as a day's or month's total" line was "a little confusing ... doesn't make me look
+  // stupid for basically having a few errors over the years"); the data keeps the key "N/A".
+  const NA_NAME = "Unassigned";
+  function naLedger(withYears) {
+    const na = cents((D.all_books.find((b) => b[0] === "N/A") || [])[1]), all = Math.abs(cents(D.overall));
+    const share = all ? Math.floor(Math.abs(na) / all * 1000 + 1) / 10 : 0;
+    const ys = D.years.filter((y) => cents((y.books.find((b) => b[0] === "N/A") || [])[1])).map((y) => y.y);
+    const span = withYears && ys.length ? ` (${ys[0]}${ys.length > 1 ? `-${ys[ys.length - 1]}` : ""})` : "";
+    return `<div class="naled"><p>Combined amounts from a small number of days and months${span} that were posted as one total without naming the sportsbook. They count toward every total${share && share < 5 ? `: under ${share}% of the all-time P/L` : ""}.</p></div>`;
   }
   // an amount outside the year's months (FanDuel's Dinger Tuesday, 2022): a quiet line at the foot of its year only (user, Nov 1:
   // "a note or something saying ... that there is the FanDuel Dinger Tuesday, but I don't want that to be so like blaring obvious")
@@ -521,7 +528,7 @@
     const codes = Object.keys(groups).sort((a, b) => (a === "NB") - (b === "NB") || idx(a) - idx(b) || groups[a][0][1] - groups[b][0][1]);
     const sortIn = (g) => g.slice().sort((a, b) => { const k = (l) => (l[4] ? 3 : cents(l[0]) > 0 || (!cents(l[0]) && cents(l[1]) > 0) ? 0 : !cents(l[0]) ? 1 : 2); return k(a[0]) - k(b[0]) || a[1] - b[1]; });
     const bookDay = Object.fromEntries((day.books || []).map((b) => [b[0], b[1]]));
-    const nameOf = (c) => (c === "NB" ? "No book written" : c === "N/A" ? "N/A" : bookName(c));
+    const nameOf = (c) => (c === "NB" ? "No book written" : c === "N/A" ? NA_NAME : bookName(c));
     const amtLen = Math.max(0, ...(day.lines || []).map((l) => (cents(l[0]) ? money(l[0], { trim: true }) : cents(l[1]) ? money(l[1], { trim: true }) : "$0").length));
     const secs = codes.map((c) => {
       const col = barHex(c === "NB" ? "#94a3b8" : bookColor(c)), dark = lightHex(col), rows = sortIn(groups[c]), n = rows.filter(([l]) => !l[4]).length;
