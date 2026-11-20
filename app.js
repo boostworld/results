@@ -553,7 +553,7 @@
           notes.push(`The overall P/L also takes ${bookName(o.book)}'s Dinger Tuesday promo today (${money(o.pl)}), tracked separately until now; it isn't in any one day or month.`));
         return notes.length ? `<div class="dnote">${notes.join("<br>")}</div>` : ""; })()}
       <div class="boxes"><div class="box${day.md < 0 ? " neg" : ""}"><div class="k">${MONTHS[+day.d.slice(5, 7) - 1]} P/L</div><div class="v ${tone(day.md)}">${money(day.md)}</div></div>
-        <div class="box${day.od < 0 ? " neg" : ""}"><div class="k">Overall P/L through ${mdy(day.d)}</div><div class="v ${tone(day.od)}">${money(day.od)}</div></div></div>
+        <div class="box${day.od < 0 ? " neg" : ""}"><div class="k">Overall P/L since ${mdy(D.since)}</div><div class="v ${tone(day.od)}">${money(day.od)}</div></div></div>
       ${cents(bonus) ? `<div class="dc-foot">Bonus bets tracked conservatively at ${pct(day.rate)} value</div>` : ""}</div>`;
   }
   function viewDay(r) {
